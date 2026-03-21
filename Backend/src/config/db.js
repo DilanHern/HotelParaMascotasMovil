@@ -1,0 +1,1 @@
+// Inicializa la conexión a la base de datos
