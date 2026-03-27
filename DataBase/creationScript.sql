@@ -41,7 +41,8 @@ create table Pl_UserStatus (
 
 create table Pl_Users (
   id uuid primary key references auth.users(id) on delete cascade,
-  name text not null,
+  firstname text not null,
+  lastname text not null,
   email text unique,
   cellphone text,
   district_id int references Pl_Districts(id),
