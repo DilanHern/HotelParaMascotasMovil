@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { ArrowLeft, LogOut } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface MobileHeaderProps {
 	title: string;
@@ -38,32 +39,34 @@ export function MobileHeader({
 	};
 
 	return (
-		<View style={[styles.header, { backgroundColor }]}> 
-			{showBack ? (
-				<TouchableOpacity onPress={handleBack} style={styles.icon} accessibilityLabel="back">
-					<ArrowLeft color={titleColor} size={20} />
-				</TouchableOpacity>
-			) : (
-				<View style={styles.placeholder} />
-			)}
+		<SafeAreaView edges={["top"]} style={{ backgroundColor }}>
+			<View style={styles.header}>
+				{showBack ? (
+					<TouchableOpacity onPress={handleBack} style={styles.icon} accessibilityLabel="back">
+						<ArrowLeft color={titleColor} size={20} />
+					</TouchableOpacity>
+				) : (
+					<View style={styles.placeholder} />
+				)}
 
-			<Text numberOfLines={1} style={[styles.title, { color: titleColor }]}>{title}</Text>
+				<Text numberOfLines={1} style={[styles.title, { color: titleColor }]}>{title}</Text>
 
-			{showLogout ? (
-				<TouchableOpacity onPress={handleLogout} style={styles.icon} accessibilityLabel="logout">
-					<LogOut color={titleColor} size={20} />
-				</TouchableOpacity>
-			) : (
-				<View style={styles.placeholder} />
-			)}
-		</View>
+				{showLogout ? (
+					<TouchableOpacity onPress={handleLogout} style={styles.icon} accessibilityLabel="logout">
+						<LogOut color={titleColor} size={20} />
+					</TouchableOpacity>
+				) : (
+					<View style={styles.placeholder} />
+				)}
+			</View>
+		</SafeAreaView>
 	);
 }
 
 const styles = StyleSheet.create({
 	header: {
-		height: 76,
-		paddingHorizontal: 12,
+		height: 56,
+		paddingHorizontal: 6,
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "space-between",
