@@ -1,4 +1,4 @@
-import { Trash2, X } from "lucide-react";
+import { Trash2, X } from "lucide-react-native";
 import React, { useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 

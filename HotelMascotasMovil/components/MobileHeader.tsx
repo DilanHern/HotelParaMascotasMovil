@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
