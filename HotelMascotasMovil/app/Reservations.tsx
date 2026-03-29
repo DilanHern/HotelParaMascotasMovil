@@ -1,11 +1,14 @@
 import { Calendar, Plus } from "lucide-react-native";
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MobileHeader } from "../components/MobileHeader";
+import NewReservationModal from "../components/NewReservationModal";
 import type { Reservation } from "../components/ReservationCard";
 import ReservationCard from "../components/ReservationCard";
 
 export default function Reservations() {
+
+  const [showNewReservation, setShowNewReservation] = useState(false);
 
 	// mock data
 	const reservations: Reservation[] = [
@@ -44,11 +47,13 @@ export default function Reservations() {
 			<MobileHeader title="Mis Reservas" showBack={true} backPath="/home" backgroundColor="#6D4C41" />
 
 			<View style={styles.headerActions}>
-				<TouchableOpacity style={styles.newReservationButton} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.newReservationButton} activeOpacity={0.8} onPress={() => setShowNewReservation(true)}>
 					<Plus color="#fff" size={16} style={styles.icon} />
 					<Text style={styles.buttonText}>Nueva Reserva</Text>
 				</TouchableOpacity>
 			</View>
+
+      <NewReservationModal visible={showNewReservation} onClose={() => setShowNewReservation(false)} />
 
 			{reservations.length === 0 ? (
 				<View style={styles.emptyContainer}>
