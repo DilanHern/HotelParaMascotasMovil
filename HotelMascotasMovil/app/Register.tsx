@@ -1,16 +1,13 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
 import { DropdownSelect } from "@/components/DropdownSelect";
+import { supabase } from "@/lib/supabase";
 import {
   provinces,
-  cantons,
-  districts,
   getCantonsByProvince,
   getDistrictsByCanton,
-  Canton,
-  District,
 } from "@/utils/geographicData";
 
 export default function Register() {
@@ -22,12 +19,13 @@ export default function Register() {
   const [cedula, setCedula] = useState("");
   const [telefono, setTelefono] = useState("");
   const [genero, setGenero] = useState("Otro");
-  const [pais, setPais] = useState("Costa Rica");
+  const [pais] = useState("Costa Rica");
   const [provinciaId, setProvinciaId] = useState<number | null>(null);
   const [cantonId, setCantonId] = useState<number | null>(null);
   const [distritoId, setDistritoId] = useState<number | null>(null);
   const [line1, setLine1] = useState("");
   const [line2, setLine2] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleCedulaChange = (text: string) => {
     const numericText = text.replace(/[^0-9]/g, "");
@@ -43,8 +41,85 @@ export default function Register() {
     }
   };
 
-  const handleRegister = () => {
-    router.push("/Login" as any);
+  const handleRegister = async () => {
+    console.log("=== INICIO REGISTRO ===");
+    console.log("nombre:", nombre);
+    console.log("email:", email);
+    console.log("password:", password);
+    console.log("cedula:", cedula);
+    console.log("telefono:", telefono);
+    console.log("distritoId:", distritoId);
+
+    // Validaciones
+    if (!nombre || !email || !password || !cedula || !telefono || !distritoId) {
+      console.log("FALLO: campos incompletos");
+      Alert.alert("Error", "Por favor completá todos los campos obligatorios");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      console.log("FALLO: contraseñas no coinciden");
+      Alert.alert("Error", "Las contraseñas no coinciden");
+      return;
+    }
+
+    if (cedula.length < 9) {
+      console.log("FALLO: cédula corta");
+      Alert.alert("Error", "La cédula debe tener 9 dígitos");
+      return;
+    }
+
+    if (telefono.length < 8) {
+      console.log("FALLO: teléfono corto");
+      Alert.alert("Error", "El teléfono debe tener 8 dígitos");
+      return;
+    }
+
+    const nombreParts = nombre.trim().split(" ");
+    const firstname = nombreParts[0];
+    const lastname = nombreParts.slice(1).join(" ") || ".";
+    const genderBool = genero === "Masculino" ? true : false;
+
+    console.log("Datos a enviar:", { firstname, lastname, cedula, telefono, genderBool, distritoId });
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            firstname,
+            lastname,
+            cedula,
+            cellphone: telefono,
+            gender: genderBool,
+            line1,
+            line2,
+            district_id: distritoId,
+          },
+        },
+      });
+
+      console.log("Respuesta de Supabase:", JSON.stringify(data));
+      console.log("Error de Supabase:", JSON.stringify(error));
+
+      if (error) {
+        Alert.alert("Error", error.message);
+        return;
+      }
+
+  Alert.alert("¡Registro exitoso!", "Tu cuenta ha sido creada correctamente", [
+    { text: "OK", onPress: () => router.push("/Reservations" as any) },
+  ]);
+
+    } catch (e) {
+      console.log("EXCEPCIÓN:", e);
+      Alert.alert("Error inesperado", String(e));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogin = () => {
@@ -54,17 +129,18 @@ export default function Register() {
   return (
     <View style={styles.container}>
       <MobileHeader title="Registrarse" showBack={true} backPath="/Login" />
-      
+
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <Text style={styles.title}>PetLodge</Text>
         <Text style={styles.subtitle}>Crear Cuenta</Text>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Nombre</Text>
+          <Text style={styles.label}>Nombre Completo</Text>
           <TextInput
             style={styles.input}
             value={nombre}
             onChangeText={setNombre}
+            placeholder="Ej: Juan Pérez"
             placeholderTextColor="#999"
           />
         </View>
@@ -76,6 +152,7 @@ export default function Register() {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
+            autoCapitalize="none"
             placeholderTextColor="#999"
           />
         </View>
@@ -235,8 +312,14 @@ export default function Register() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleRegister}>
-          <Text style={styles.buttonText}>Registrarse</Text>
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Registrando..." : "Registrarse"}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -293,15 +376,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontSize: 16,
     color: "#333",
-  },
-  pickerContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  picker: {
-    height: 50,
-    width: "100%",
   },
   buttonGroup: {
     flexDirection: "row",
@@ -371,10 +445,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 40,
   },
+  buttonDisabled: {
+    backgroundColor: "#a1887f",
+  },
   buttonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
   },
 });
-
