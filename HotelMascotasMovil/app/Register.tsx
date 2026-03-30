@@ -77,7 +77,7 @@ export default function Register() {
 
     const nombreParts = nombre.trim().split(" ");
     const firstname = nombreParts[0];
-    const lastname = nombreParts.slice(1).join(" ") || ".";
+    const lastname = nombreParts.slice(1).join(" ") || nombreParts[0];
     const genderBool = genero === "Masculino" ? true : false;
 
     console.log("Datos a enviar:", { firstname, lastname, cedula, telefono, genderBool, distritoId });
