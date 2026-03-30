@@ -1,1 +1,0 @@
-// Inicializa firebase admin
