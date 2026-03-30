@@ -27,7 +27,7 @@ export default function Login() {
 
     try {
       await loginUser(email, password);
-      router.push("/Reservations" as any); // Mientras tanto redirige acá, cambiar !!!!
+      router.push("/home" as any);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Correo o contraseña incorrectos");
     } finally {
