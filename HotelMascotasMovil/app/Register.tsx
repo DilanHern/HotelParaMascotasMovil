@@ -1,9 +1,17 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
 import { DropdownSelect } from "@/components/DropdownSelect";
-import { supabase } from "@/lib/supabase";
+import { registerUser } from "@/src/authService";
 import {
   provinces,
   getCantonsByProvince,
@@ -42,88 +50,49 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
-    console.log("=== INICIO REGISTRO ===");
-    console.log("nombre:", nombre);
-    console.log("email:", email);
-    console.log("password:", password);
-    console.log("cedula:", cedula);
-    console.log("telefono:", telefono);
-    console.log("distritoId:", distritoId);
-
     // Validaciones
     if (!nombre || !email || !password || !cedula || !telefono || !distritoId) {
-      console.log("FALLO: campos incompletos");
       Alert.alert("Error", "Por favor completá todos los campos obligatorios");
       return;
     }
 
     if (password !== confirmPassword) {
-      console.log("FALLO: contraseñas no coinciden");
       Alert.alert("Error", "Las contraseñas no coinciden");
       return;
     }
 
     if (cedula.length < 9) {
-      console.log("FALLO: cédula corta");
       Alert.alert("Error", "La cédula debe tener 9 dígitos");
       return;
     }
 
     if (telefono.length < 8) {
-      console.log("FALLO: teléfono corto");
       Alert.alert("Error", "El teléfono debe tener 8 dígitos");
       return;
     }
 
-    const nombreParts = nombre.trim().split(" ");
-    const firstname = nombreParts[0];
-    const lastname = nombreParts.slice(1).join(" ") || nombreParts[0];
-    const genderBool = genero === "Masculino" ? true : false;
-
-    console.log("Datos a enviar:", { firstname, lastname, cedula, telefono, genderBool, distritoId });
-
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      await registerUser({
+        nombre,
         email,
         password,
-        options: {
-          data: {
-            firstname,
-            lastname,
-            cedula,
-            cellphone: telefono,
-            gender: genderBool,
-            line1,
-            line2,
-            district_id: distritoId,
-          },
-        },
+        cedula,
+        telefono,
+        genero,
+        line1,
+        line2,
+        distritoId,
       });
-
-      console.log("Respuesta de Supabase:", JSON.stringify(data));
-      console.log("Error de Supabase:", JSON.stringify(error));
-
-      if (error) {
-        Alert.alert("Error", error.message);
-        return;
-      }
-
-  Alert.alert("¡Registro exitoso!", "Tu cuenta ha sido creada correctamente", [
-    { text: "OK", onPress: () => router.push("/Reservations" as any) },
-  ]);
-
-    } catch (e) {
-      console.log("EXCEPCIÓN:", e);
-      Alert.alert("Error inesperado", String(e));
+      Alert.alert("¡Registro exitoso!", "Tu cuenta ha sido creada correctamente", [
+        { text: "OK", onPress: () => router.push("/Reservations" as any) },
+      ]);
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Error inesperado");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogin = () => {
-    router.push("/Login" as any);
   };
 
   return (
@@ -307,7 +276,7 @@ export default function Register() {
 
         <View style={styles.loginContainer}>
           <Text style={styles.loginText}>¿Ya tienes cuenta?</Text>
-          <TouchableOpacity onPress={handleLogin}>
+          <TouchableOpacity onPress={() => router.push("/Login" as any)}>
             <Text style={styles.loginLink}>Inicia Sesión</Text>
           </TouchableOpacity>
         </View>

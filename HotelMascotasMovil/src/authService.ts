@@ -18,7 +18,7 @@ export async function registerUser(formData: RegisterData) {
   // Separar nombre en firstname y lastname
   const nombreParts = nombre.trim().split(" ");
   const firstname = nombreParts[0];
-  const lastname = nombreParts.slice(1).join(" ") || ".";
+  const lastname = nombreParts.slice(1).join(" ") || nombreParts[0];
 
   // Convertir género a boolean
   const genderBool = genero === "Masculino";
