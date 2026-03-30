@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { StyleSheet, Text, View, Image, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
 import { Calendar, Grid3x3, Bell, User } from "lucide-react-native";
 
@@ -17,6 +18,7 @@ interface Pet {
 }
 
 export default function HomeScreen() {
+	const router = useRouter();
 	const [pets] = useState<Pet[]>([
 		{
 			id: "1",
@@ -102,7 +104,10 @@ export default function HomeScreen() {
 					</TouchableOpacity>
 
 					{/* Cuadro 2 - Mis Reservas */}
-					<TouchableOpacity style={[styles.menuCard, styles.darkCard]}>
+					<TouchableOpacity 
+						style={[styles.menuCard, styles.darkCard]}
+						onPress={() => router.push("/Reservations" as any)}
+					>
 						<Grid3x3 color="#fff8e7" size={24} />
 						<View style={styles.menuTextContainer}>
 							<Text style={[styles.menuTitle, styles.darkText]}>Mis Reservas</Text>
