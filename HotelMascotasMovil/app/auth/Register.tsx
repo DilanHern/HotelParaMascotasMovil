@@ -85,9 +85,9 @@ export default function Register() {
         line2,
         distritoId,
       });
-      Alert.alert("¡Registro exitoso!", "Tu cuenta ha sido creada correctamente", [
-        { text: "OK", onPress: () => router.push("/Reservations" as any) },
-      ]);
+
+      // Mientras tanto redirigue aca, cambiar !!!!
+      router.push("/Reservations" as any);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Error inesperado");
     } finally {

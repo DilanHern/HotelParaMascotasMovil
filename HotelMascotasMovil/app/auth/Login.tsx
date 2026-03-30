@@ -1,25 +1,44 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View, TextInput, TouchableOpacity } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
+import { loginUser } from "@/src/authService";
 
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
-    router.push("/Reservations" as any);
-  };
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Por favor ingresá tu correo y contraseña");
+      return;
+    }
 
-  const handleRegister = () => {
-    router.push("/Register" as any);
+    setLoading(true);
+
+    try {
+      await loginUser(email, password);
+      router.push("/Reservations" as any); // Mientras tanto redirige acá, cambiar !!!!
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Correo o contraseña incorrectos");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <MobileHeader title="Iniciar Sesión" />
-      
+
       <View style={styles.content}>
         <Text style={styles.title}>PetLodge</Text>
         <Text style={styles.subtitle}>Bienvenido</Text>
@@ -31,6 +50,7 @@ export default function Login() {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
+            autoCapitalize="none"
             placeholderTextColor="#999"
           />
         </View>
@@ -48,13 +68,19 @@ export default function Login() {
 
         <View style={styles.registerContainer}>
           <Text style={styles.registerText}>¿No tienes cuenta?</Text>
-          <TouchableOpacity onPress={handleRegister}>
+          <TouchableOpacity onPress={() => router.push("/auth/Register" as any)}>
             <Text style={styles.registerLink}>Regístrate</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-          <Text style={styles.buttonText}>Iniciar Sesión</Text>
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleSignIn}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -124,6 +150,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: "center",
+  },
+  buttonDisabled: {
+    backgroundColor: "#a1887f",
   },
   buttonText: {
     color: "#fff",
