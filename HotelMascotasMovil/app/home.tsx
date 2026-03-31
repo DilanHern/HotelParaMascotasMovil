@@ -95,8 +95,10 @@ export default function HomeScreen() {
 				{/* Menu Cards */}
 				<View style={styles.menuContainer}>
 					{/* Cuadro 1 - Mis Mascotas */}
-					<TouchableOpacity style={[styles.menuCard, styles.darkCard]}>
-						<Calendar color="#fff8e7" size={24} />
+				<TouchableOpacity 
+					style={[styles.menuCard, styles.darkCard]}
+					onPress={() => router.push("/pets" as any)}
+				>
 						<View style={styles.menuTextContainer}>
 							<Text style={[styles.menuTitle, styles.darkText]}>Mis Mascotas</Text>
 							<Text style={[styles.menuSubtitle, styles.darkText]}>Editar, registrar o eliminar</Text>
