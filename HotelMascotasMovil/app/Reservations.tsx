@@ -44,7 +44,7 @@ export default function Reservations() {
 
 	return (
 		<View style={styles.page}>
-			<MobileHeader title="Mis Reservas" showBack={true} backPath="/home" backgroundColor="#6D4C41" />
+			<MobileHeader title="Mis Reservas" showBack={true} backPath="/home" />
 
 			<View style={styles.headerActions}>
         <TouchableOpacity style={styles.newReservationButton} activeOpacity={0.8} onPress={() => setShowNewReservation(true)}>
@@ -79,9 +79,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   newReservationButton: {
-    backgroundColor: "#6D4C41",
+    backgroundColor: "#6b4226",
     width: "100%",
-    paddingVertical: 6,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
     flexDirection: "row",
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   page: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#fff8e7",
   },
   container: {
     flex: 1,

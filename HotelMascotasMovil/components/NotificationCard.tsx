@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     position: "relative",
     borderWidth: 1,
-    borderColor: "#eee",
+    borderColor: "#808080",
     flexDirection: "row",
     alignItems: "center",
   },
@@ -61,14 +61,19 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   content: {
+    marginBottom: 5,
+    marginTop: 5,
     flex: 1,
   },
   title: {
     fontWeight: "700",
+    fontSize: 17,
     marginBottom: 4,
+    color: "#6b4226",
   },
   body: {
     color: "#555",
+    fontSize: 14,
   },
   time: {
     marginLeft: 8,

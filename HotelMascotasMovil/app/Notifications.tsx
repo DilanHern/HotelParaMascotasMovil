@@ -37,7 +37,7 @@ export default function Notifications() {
 
   return (
     <View style={styles.page}>
-      <MobileHeader title="Notificaciones" showBack={true} backgroundColor="#6D4C41" />
+      <MobileHeader title="Notificaciones" showBack={true} />
 
       <ScrollView contentContainerStyle={styles.list}>
         {notifications.map((n) => (
@@ -49,6 +49,6 @@ export default function Notifications() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#fff" },
-  list: { padding: 16, paddingTop: 12 },
+  page: { flex: 1, backgroundColor: "#fff8e7" },
+  list: { padding: 16, paddingTop: 20 },
 });

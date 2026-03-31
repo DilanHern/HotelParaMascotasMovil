@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { StyleSheet, Text, View, Image, ScrollView, TouchableOpacity } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
-import { Calendar, Grid3x3, Bell, User } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { Bell, Calendar, Grid3x3, User } from "lucide-react-native";
+import React, { useState } from "react";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 
 
@@ -116,7 +116,7 @@ export default function HomeScreen() {
 					</TouchableOpacity>
 
 					{/* Cuadro 3 - Notificaciones */}
-					<TouchableOpacity style={[styles.menuCard, styles.lightCard]}>
+					<TouchableOpacity style={[styles.menuCard, styles.lightCard]} onPress={() => router.push("/Notifications" as any)}>
 						<Bell color="#6b4226" size={24} />
 						<View style={styles.menuTextContainer}>
 							<Text style={[styles.menuTitle, styles.lightText]}>Notificaciones</Text>
