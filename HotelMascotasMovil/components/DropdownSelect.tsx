@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   },
   selectButton: {
     width: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: "#fff8e7",
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderRadius: 8,
@@ -114,6 +114,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
   selectButtonText: {
     fontSize: 16,
