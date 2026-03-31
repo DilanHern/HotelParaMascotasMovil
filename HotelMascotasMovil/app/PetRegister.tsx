@@ -8,6 +8,8 @@ import {
 	ScrollView,
 	Switch,
 	Alert,
+	Modal,
+	Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -15,10 +17,17 @@ import { MobileHeader } from "@/components/MobileHeader";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Upload } from "lucide-react-native";
 import { DropdownSelect } from "@/components/DropdownSelect";
+import * as ImagePicker from "expo-image-picker";
 
 interface DropdownOption {
 	id: number;
 	name: string;
+}
+
+interface SelectedImage {
+	uri: string;
+	name: string;
+	mimeType?: string;
 }
 
 const animalOptions: DropdownOption[] = [
@@ -53,7 +62,7 @@ export default function PetRegister() {
 	const [peso, setPeso] = useState("");
 	const [tamañoId, setTamañoId] = useState<number | null>(null);
 	const [descripcion, setDescripcion] = useState("");
-	const [fotoUri, setFotoUri] = useState("");
+	const [foto, setFoto] = useState<SelectedImage | null>(null);
 
 	// Estados para vacunas y condiciones médicas
 	const [tieneVacunas, setTieneVacunas] = useState(false);
@@ -68,7 +77,30 @@ export default function PetRegister() {
 		if (selectedDate) {
 			setFechaNacimiento(selectedDate);
 		}
-		setShowDatePicker(false);
+	};
+
+	const pickImage = async () => {
+		const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+		if (!permission.granted) {
+			Alert.alert("Permiso requerido", "Debes permitir acceso a tu galería.");
+			return;
+		}
+
+		const result = await ImagePicker.launchImageLibraryAsync({
+			mediaTypes: ["images"],
+			allowsEditing: false,
+			quality: 0.9,
+		});
+
+		if (result.canceled || !result.assets?.length) return;
+
+		const asset = result.assets[0];
+		const pickedName = asset.fileName || `pet_image_${Date.now()}.jpg`;
+		setFoto({
+			uri: asset.uri,
+			name: pickedName,
+			mimeType: asset.mimeType,
+		});
 	};
 
 	const getTipoAnimal = () => animalOptions.find(o => o.id === tipoAnimalId)?.name || "";
@@ -145,14 +177,30 @@ export default function PetRegister() {
 								{fechaNacimiento.toLocaleDateString()}
 							</Text>
 						</TouchableOpacity>
-						{showDatePicker && (
-							<DateTimePicker
-								value={fechaNacimiento}
-								mode="date"
-								display="spinner"
-								onChange={handleDateChange}
-							/>
-						)}
+						<Modal
+							transparent={true}
+							animationType="fade"
+							visible={showDatePicker}
+							onRequestClose={() => setShowDatePicker(false)}
+						>
+							<View style={styles.datePickerModalOverlay}>
+								<View style={styles.datePickerModalContent}>
+									<DateTimePicker
+										value={fechaNacimiento}
+										mode="date"
+										display="spinner"
+										onChange={handleDateChange}
+										textColor="#333"
+									/>
+									<TouchableOpacity
+										style={styles.datePickerConfirmButton}
+										onPress={() => setShowDatePicker(false)}
+									>
+										<Text style={styles.datePickerConfirmButtonText}>Confirmar</Text>
+									</TouchableOpacity>
+								</View>
+							</View>
+						</Modal>
 					</View>
 
 					{/* Tipo de animal */}
@@ -230,10 +278,16 @@ export default function PetRegister() {
 					{/* Foto */}
 					<View style={styles.inputGroup}>
 						<Text style={styles.label}>Foto (opcional)</Text>
-						<TouchableOpacity style={styles.uploadButton}>
+						<TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
 							<Upload color="#6b4226" size={24} />
 							<Text style={styles.uploadButtonText}>Seleccionar imagen</Text>
 						</TouchableOpacity>
+						{foto?.uri && (
+							<>
+								<Image source={{ uri: foto.uri }} style={styles.imagePreview} />
+								<Text style={styles.imageName}>{foto.name}</Text>
+							</>
+						)}
 					</View>
 
 					{/* Línea separadora */}
@@ -433,5 +487,39 @@ const styles = StyleSheet.create({
 		color: "#fff8e7",
 		fontSize: 16,
 		fontWeight: "700",
+	},
+	datePickerModalOverlay: {
+		flex: 1,
+		backgroundColor: "rgba(0, 0, 0, 0.5)",
+		justifyContent: "flex-end",
+	},
+	datePickerModalContent: {
+		backgroundColor: "#ffffff",
+		paddingBottom: 20,
+		borderTopLeftRadius: 20,
+		borderTopRightRadius: 20,
+	},
+	datePickerConfirmButton: {
+		paddingVertical: 12,
+		alignItems: "center",
+		borderTopWidth: 1,
+		borderTopColor: "#e0e0e0",
+	},
+	datePickerConfirmButtonText: {
+		color: "#6b4226",
+		fontSize: 16,
+		fontWeight: "600",
+	},
+	imagePreview: {
+		width: "100%",
+		height: 180,
+		borderRadius: 8,
+		marginTop: 12,
+		backgroundColor: "#f0f0f0",
+	},
+	imageName: {
+		fontSize: 12,
+		color: "#666",
+		marginTop: 8,
 	},
 });
