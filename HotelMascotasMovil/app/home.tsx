@@ -128,7 +128,10 @@ export default function HomeScreen() {
 					</TouchableOpacity>
 
 					{/* Cuadro 4 - Mi perfil */}
-					<TouchableOpacity style={[styles.menuCard, styles.lightCard]}>
+				<TouchableOpacity 
+					style={[styles.menuCard, styles.lightCard]}
+					onPress={() => router.push("/EditProfile" as any)}
+				>
 						<User color="#6b4226" size={24} />
 						<View style={styles.menuTextContainer}>
 							<Text style={[styles.menuTitle, styles.lightText]}>Mi perfil</Text>
