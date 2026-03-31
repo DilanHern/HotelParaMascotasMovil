@@ -1,14 +1,15 @@
 import { Calendar, Check, ChevronDown, ChevronUp, X } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import Toast from "react-native-toast-message";
 
 type Props = {
   visible: boolean;
@@ -36,6 +37,11 @@ export default function NewReservationModal({ visible, onClose }: Props) {
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
+  // normalize date to local year/month/day (midnight) to avoid timezone/DST issues
+  const dateOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  const today = dateOnly(new Date());
+
   const [roomsAvailable, setRoomsAvailable] = useState<typeof allRooms>([]);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
 
@@ -53,7 +59,12 @@ export default function NewReservationModal({ visible, onClose }: Props) {
   };
 
   const onSelectStart = (date: Date) => {
-    setStartDate(date);
+    const sel = dateOnly(date);
+    if (sel < today) {
+      setShowStartPicker(false);
+      return;
+    }
+    setStartDate(sel);
     setShowStartPicker(false);
     // reset end date when start changes
     setEndDate(null);
@@ -63,7 +74,8 @@ export default function NewReservationModal({ visible, onClose }: Props) {
   };
 
   const onSelectEnd = (date: Date) => {
-    setEndDate(date);
+    const sel = dateOnly(date);
+    setEndDate(sel);
     setShowEndPicker(false);
     setRoomsAvailable([]);
     setSelectedRoom(null);
@@ -131,6 +143,8 @@ export default function NewReservationModal({ visible, onClose }: Props) {
             <DateTimePickerModal
               isVisible={showStartPicker}
               mode="date"
+              date={startDate ?? today}
+              minimumDate={today}
               onConfirm={onSelectStart}
               onCancel={() => setShowStartPicker(false)}
             />
@@ -146,13 +160,15 @@ export default function NewReservationModal({ visible, onClose }: Props) {
             <DateTimePickerModal
               isVisible={showEndPicker}
               mode="date"
-              minimumDate={startDate ? new Date(startDate.getTime() + 24 * 60 * 60 * 1000) : undefined}
+              date={endDate ?? (startDate ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1) : today)}
+              minimumDate={startDate ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1) : undefined}
               onConfirm={(d: Date) => {
-                if (startDate && d <= startDate) {
-                  // ignore invalid selection
-                  return setShowEndPicker(false);
+                const sel = dateOnly(d);
+                if (startDate && sel <= startDate) {
+                  setShowEndPicker(false);
+                  return;
                 }
-                onSelectEnd(d);
+                onSelectEnd(sel);
               }}
               onCancel={() => setShowEndPicker(false)}
             />
@@ -215,7 +231,14 @@ export default function NewReservationModal({ visible, onClose }: Props) {
             )}
 
             <View style={styles.footerButtons}>
-              <TouchableOpacity style={styles.createButton} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.createButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  Toast.show({ type: "success", text1: "Reserva creada exitosamente", position: 'bottom' });
+                  onClose();
+                }}
+              >
                 <Text style={styles.createButtonText}>Crear reserva</Text>
               </TouchableOpacity>
 
