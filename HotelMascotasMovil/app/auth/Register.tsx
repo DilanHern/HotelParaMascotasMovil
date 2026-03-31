@@ -276,7 +276,7 @@ export default function Register() {
 
         <View style={styles.loginContainer}>
           <Text style={styles.loginText}>¿Ya tienes cuenta?</Text>
-          <TouchableOpacity onPress={() => router.push("/Login" as any)}>
+          <TouchableOpacity onPress={() => router.push("/auth/Login" as any)}>
             <Text style={styles.loginLink}>Inicia Sesión</Text>
           </TouchableOpacity>
         </View>

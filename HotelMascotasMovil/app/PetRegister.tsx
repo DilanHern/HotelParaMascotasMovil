@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	StyleSheet,
 	Text,
@@ -6,8 +6,9 @@ import {
 	TextInput,
 	TouchableOpacity,
 	ScrollView,
-	Switch,
 	Alert,
+	ActivityIndicator,
+	Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -15,33 +16,21 @@ import { MobileHeader } from "@/components/MobileHeader";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Upload } from "lucide-react-native";
 import { DropdownSelect } from "@/components/DropdownSelect";
+import { getPetTypes, createPet } from "@/src/petsService";
 
 interface DropdownOption {
 	id: number;
 	name: string;
 }
 
-const animalOptions: DropdownOption[] = [
-	{ id: 1, name: "Gato" },
-	{ id: 2, name: "Perro" },
-	{ id: 3, name: "Conejo" },
-	{ id: 4, name: "Hámster" },
-	{ id: 5, name: "Pájaro" },
-];
-
 const generoOptions: DropdownOption[] = [
 	{ id: 1, name: "Macho" },
 	{ id: 2, name: "Hembra" },
 ];
 
-const tamañoOptions: DropdownOption[] = [
-	{ id: 1, name: "Pequeño" },
-	{ id: 2, name: "Mediano" },
-	{ id: 3, name: "Grande" },
-];
-
 export default function PetRegister() {
 	const router = useRouter();
+	const [animalOptions, setAnimalOptions] = useState<DropdownOption[]>([]);
 
 	// Estados para información de la mascota
 	const [nombre, setNombre] = useState("");
@@ -51,283 +40,284 @@ export default function PetRegister() {
 	const [generoId, setGeneroId] = useState<number | null>(null);
 	const [raza, setRaza] = useState("");
 	const [peso, setPeso] = useState("");
-	const [tamañoId, setTamañoId] = useState<number | null>(null);
 	const [descripcion, setDescripcion] = useState("");
 	const [fotoUri, setFotoUri] = useState("");
-
-	// Estados para vacunas y condiciones médicas
-	const [tieneVacunas, setTieneVacunas] = useState(false);
-	const [tieneCondicionesMedicas, setTieneCondicionesMedicas] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [loadingPetTypes, setLoadingPetTypes] = useState(true);
 
 	// Estados para contacto del veterinario
 	const [veterinarioNombre, setVeterinarioNombre] = useState("");
 	const [veterinarioTelefono, setVeterinarioTelefono] = useState("");
 	const [cuidadosEspeciales, setCuidadosEspeciales] = useState("");
 
+	useEffect(() => {
+		loadPetTypes();
+	}, []);
+
+	const loadPetTypes = async () => {
+		try {
+			const types = await getPetTypes();
+			setAnimalOptions(types);
+		} catch (error) {
+			console.error("Error loading pet types:", error);
+			Alert.alert("Error", "No se pudieron cargar los tipos de mascota");
+		} finally {
+			setLoadingPetTypes(false);
+		}
+	};
+
 	const handleDateChange = (event: any, selectedDate?: Date) => {
+		if (event.type === "dismissed") {
+			setShowDatePicker(false);
+			return;
+		}
 		if (selectedDate) {
 			setFechaNacimiento(selectedDate);
+			setShowDatePicker(false);
 		}
-		setShowDatePicker(false);
 	};
 
 	const getTipoAnimal = () => animalOptions.find(o => o.id === tipoAnimalId)?.name || "";
 	const getGenero = () => generoOptions.find(o => o.id === generoId)?.name || "";
-	const getTamaño = () => tamañoOptions.find(o => o.id === tamañoId)?.name || "";
 
-	const handleGuardar = () => {
+	const handleGuardar = async () => {
 		// Validaciones básicas
-		if (!nombre || !fechaNacimiento || !tipoAnimalId || !generoId || !raza || !peso || !tamañoId) {
+		if (!nombre || !fechaNacimiento || !tipoAnimalId || !generoId || !raza || !peso || !veterinarioNombre || !veterinarioTelefono) {
 			Alert.alert("Error", "Por favor completa todos los campos obligatorios");
 			return;
 		}
 
+		// Validar peso
+		const pesoNum = parseFloat(peso);
+		if (isNaN(pesoNum) || pesoNum <= 0) {
+			Alert.alert("Error", "El peso debe ser un número positivo");
+			return;
+		}
+
 		// Validar teléfono
-		if (veterinarioTelefono && veterinarioTelefono.length !== 8) {
+		if (veterinarioTelefono.length !== 8) {
 			Alert.alert("Error", "El teléfono debe tener exactamente 8 dígitos");
 			return;
 		}
 
-		console.log({
-			nombre,
-			fechaNacimiento,
-			tipoAnimal: getTipoAnimal(),
-			genero: getGenero(),
-			raza,
-			peso,
-			tamaño: getTamaño(),
-			descripcion,
-			tieneVacunas,
-			tieneCondicionesMedicas,
-			veterinarioNombre,
-			veterinarioTelefono,
-			cuidadosEspeciales,
-		});
+		setLoading(true);
+		try {
+			// Convertir generoId a boolean (1 = true/Macho, 2 = false/Hembra)
+			const genderBool = generoId === 1;
 
-		setTimeout(() => {
+			await createPet({
+				name: nombre,
+				race: raza,
+				birthdate: fechaNacimiento.toISOString().split('T')[0],
+				pet_type_id: tipoAnimalId,
+				weight: pesoNum,
+				gender: genderBool,
+				veterinarian_name: veterinarioNombre,
+				veterinarian_cellphone: veterinarioTelefono,
+				special_care_needs: cuidadosEspeciales,
+				profile_picture_url: fotoUri || undefined,
+			});
+
+			Alert.alert("Éxito", "Mascota registrada correctamente");
 			router.replace("/pets" as any);
-		}, 500);
+		} catch (error: any) {
+			console.error("Error creating pet:", error);
+			Alert.alert("Error", error.message || "No se pudo registrar la mascota");
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	return (
 		<SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
 			<MobileHeader title="Registrar Mascota" showBack={true} backPath="/pets" />
 
-			<ScrollView
-				style={styles.content}
-				showsVerticalScrollIndicator={false}
-				contentContainerStyle={styles.scrollContent}
-			>
-				{/* Card de Información */}
-				<View style={styles.card}>
-					<Text style={styles.sectionTitle}>Información de la mascota</Text>
+			{loadingPetTypes ? (
+				<View style={styles.loadingContainer}>
+					<ActivityIndicator size="large" color="#6D4C41" />
+					<Text style={styles.loadingText}>Cargando formulario...</Text>
+				</View>
+			) : (
+				<ScrollView
+					style={styles.content}
+					showsVerticalScrollIndicator={false}
+					contentContainerStyle={styles.scrollContent}
+				>
+					{/* Card de Información */}
+					<View style={styles.card}>
+						<Text style={styles.sectionTitle}>Información de la mascota</Text>
 
-					{/* Nombre */}
-					<View style={styles.inputGroup}>
-						<Text style={styles.label}>Nombre *</Text>
-						<TextInput
-							style={styles.input}
-							value={nombre}
-							onChangeText={setNombre}
-							placeholderTextColor="#ccc"
-							placeholder="Ej: Luffy"
-						/>
-					</View>
+						{/* Nombre */}
+						<View style={styles.inputGroup}>
+							<Text style={styles.label}>Nombre *</Text>
+							<TextInput
+								style={styles.input}
+								value={nombre}
+								onChangeText={setNombre}
+								placeholderTextColor="#ccc"
+								placeholder="Ej: Luffy"
+								editable={!loading}
+							/>
+						</View>
 
-					{/* Fecha de nacimiento */}
-					<View style={styles.inputGroup}>
-						<Text style={styles.label}>Fecha de nacimiento *</Text>
+						{/* Fecha de nacimiento */}
+						<View style={styles.inputGroup}>
+							<Text style={styles.label}>Fecha de nacimiento *</Text>
+							{showDatePicker && (
+								<DateTimePicker
+									value={fechaNacimiento}
+									mode="date"
+									display={Platform.OS === "ios" ? "spinner" : "default"}
+									onChange={handleDateChange}
+									maximumDate={new Date()}
+								/>
+							)}
+							<TouchableOpacity
+								style={styles.dateButton}
+								onPress={() => setShowDatePicker(true)}
+								disabled={loading}
+							>
+								<Text style={styles.dateButtonText}>
+									{fechaNacimiento.toLocaleDateString()}
+								</Text>
+							</TouchableOpacity>
+						</View>
+
+						{/* Tipo de animal */}
+						<View style={styles.inputGroup}>
+							<DropdownSelect
+								label="Tipo de animal *"
+								options={animalOptions}
+								selectedId={tipoAnimalId}
+								onSelect={(option) => setTipoAnimalId(option.id)}
+								placeholder="Selecciona"
+							/>
+						</View>
+
+						{/* Género */}
+						<View style={styles.inputGroup}>
+							<DropdownSelect
+								label="Género *"
+								options={generoOptions}
+								selectedId={generoId}
+								onSelect={(option) => setGeneroId(option.id)}
+								placeholder="Selecciona"
+							/>
+						</View>
+
+						{/* Raza */}
+						<View style={styles.inputGroup}>
+							<Text style={styles.label}>Raza *</Text>
+							<TextInput
+								style={styles.input}
+								value={raza}
+								onChangeText={setRaza}
+								placeholderTextColor="#ccc"
+								placeholder="Ej: Persa"
+								editable={!loading}
+							/>
+						</View>
+
+						{/* Peso */}
+						<View style={styles.inputGroup}>
+							<Text style={styles.label}>Peso (kg) *</Text>
+							<TextInput
+								style={styles.input}
+								value={peso}
+								onChangeText={setPeso}
+								keyboardType="decimal-pad"
+								placeholderTextColor="#ccc"
+								placeholder="Ej: 4.5"
+								editable={!loading}
+							/>
+						</View>
+
+						{/* Descripción */}
+						<View style={styles.inputGroup}>
+							<Text style={styles.label}>Descripción</Text>
+							<TextInput
+								style={[styles.input, styles.textArea]}
+								value={descripcion}
+								onChangeText={setDescripcion}
+								placeholder="Características especiales de tu mascota"
+								placeholderTextColor="#ccc"
+								multiline
+								numberOfLines={4}
+								editable={!loading}
+							/>
+						</View>
+
+						{/* Línea separadora */}
+						<View style={styles.separator} />
+
+						{/* Contacto del veterinario */}
+						<Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+							Contacto del veterinario
+						</Text>
+
+						{/* Nombre veterinario */}
+						<View style={styles.inputGroup}>
+							<Text style={styles.label}>Nombre *</Text>
+							<TextInput
+								style={styles.input}
+								value={veterinarioNombre}
+								onChangeText={setVeterinarioNombre}
+								placeholderTextColor="#ccc"
+								placeholder="Nombre del veterinario"
+								editable={!loading}
+							/>
+						</View>
+
+						{/* Teléfono veterinario */}
+						<View style={styles.inputGroup}>
+							<Text style={styles.label}>Teléfono *</Text>
+							<TextInput
+								style={styles.input}
+								value={veterinarioTelefono}
+								onChangeText={(text) => {
+									// Solo permitir números
+									const numeros = text.replace(/[^0-9]/g, "");
+									// Limitar a 8 dígitos
+									if (numeros.length <= 8) {
+										setVeterinarioTelefono(numeros);
+									}
+								}}
+								keyboardType="phone-pad"
+								placeholderTextColor="#ccc"
+								placeholder="12345678"
+								maxLength={8}
+								editable={!loading}
+							/>
+						</View>
+
+						{/* Cuidados especiales */}
+						<View style={styles.inputGroup}>
+							<Text style={styles.label}>Cuidados especiales (opcional)</Text>
+							<TextInput
+								style={[styles.input, styles.textArea]}
+								value={cuidadosEspeciales}
+								onChangeText={setCuidadosEspeciales}
+								placeholder="Comida especial, comportamiento, etc."
+								placeholderTextColor="#ccc"
+								multiline
+								numberOfLines={4}
+								editable={!loading}
+							/>
+						</View>
+
+						{/* Botón Guardar */}
 						<TouchableOpacity
-							style={styles.dateButton}
-							onPress={() => setShowDatePicker(true)}
+							style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+							onPress={handleGuardar}
+							disabled={loading}
 						>
-							<Text style={styles.dateButtonText}>
-								{fechaNacimiento.toLocaleDateString()}
+							<Text style={styles.saveButtonText}>
+								{loading ? "Guardando..." : "Guardar Mascota"}
 							</Text>
 						</TouchableOpacity>
-						{showDatePicker && (
-							<DateTimePicker
-								value={fechaNacimiento}
-								mode="date"
-								display="spinner"
-								onChange={handleDateChange}
-							/>
-						)}
 					</View>
-
-					{/* Tipo de animal */}
-					<View style={styles.inputGroup}>
-						<DropdownSelect
-							label="Tipo de animal *"
-							options={animalOptions}
-							selectedId={tipoAnimalId}
-							onSelect={(option) => setTipoAnimalId(option.id)}
-							placeholder="Selecciona"
-						/>
-					</View>
-
-					{/* Género */}
-					<View style={styles.inputGroup}>
-						<DropdownSelect
-							label="Género *"
-							options={generoOptions}
-							selectedId={generoId}
-							onSelect={(option) => setGeneroId(option.id)}
-							placeholder="Selecciona"
-						/>
-					</View>
-
-					{/* Raza */}
-					<View style={styles.inputGroup}>
-						<Text style={styles.label}>Raza *</Text>
-						<TextInput
-							style={styles.input}
-							value={raza}
-							onChangeText={setRaza}
-							placeholderTextColor="#ccc"
-							placeholder="Ej: Persa"
-						/>
-					</View>
-
-					{/* Peso */}
-					<View style={styles.inputGroup}>
-						<Text style={styles.label}>Peso (kg) *</Text>
-						<TextInput
-							style={styles.input}
-							value={peso}
-							onChangeText={setPeso}
-							keyboardType="decimal-pad"
-							placeholderTextColor="#ccc"
-							placeholder="Ej: 4.5"
-						/>
-					</View>
-
-					{/* Tamaño */}
-					<View style={styles.inputGroup}>
-						<DropdownSelect
-							label="Tamaño *"
-							options={tamañoOptions}
-							selectedId={tamañoId}
-							onSelect={(option) => setTamañoId(option.id)}
-							placeholder="Selecciona"
-						/>
-					</View>
-
-					{/* Descripción */}
-					<View style={styles.inputGroup}>
-						<Text style={styles.label}>Descripción</Text>
-						<TextInput
-							style={[styles.input, styles.textArea]}
-							value={descripcion}
-							onChangeText={setDescripcion}
-							placeholder="Características especiales de tu mascota"
-							placeholderTextColor="#ccc"
-							multiline
-							numberOfLines={4}
-						/>
-					</View>
-
-					{/* Foto */}
-					<View style={styles.inputGroup}>
-						<Text style={styles.label}>Foto (opcional)</Text>
-						<TouchableOpacity style={styles.uploadButton}>
-							<Upload color="#6b4226" size={24} />
-							<Text style={styles.uploadButtonText}>Seleccionar imagen</Text>
-						</TouchableOpacity>
-					</View>
-
-					{/* Línea separadora */}
-					<View style={styles.separator} />
-
-					{/* ¿Tiene vacunas? */}
-					<View style={styles.toggleGroup}>
-						<Text style={styles.label}>¿Tiene vacunas?</Text>
-						<Switch
-							value={tieneVacunas}
-							onValueChange={setTieneVacunas}
-							trackColor={{ false: "#ccc", true: "#6b4226" }}
-							thumbColor={tieneVacunas ? "#fff8e7" : "#f4f3f4"}
-						/>
-					</View>
-
-					{/* Línea separadora */}
-					<View style={styles.separator} />
-
-					{/* ¿Tiene condiciones médicas? */}
-					<View style={styles.toggleGroup}>
-						<Text style={styles.label}>¿Tiene condiciones médicas?</Text>
-						<Switch
-							value={tieneCondicionesMedicas}
-							onValueChange={setTieneCondicionesMedicas}
-							trackColor={{ false: "#ccc", true: "#6b4226" }}
-							thumbColor={tieneCondicionesMedicas ? "#fff8e7" : "#f4f3f4"}
-						/>
-					</View>
-
-					{/* Línea separadora */}
-					<View style={styles.separator} />
-
-					{/* Contacto del veterinario */}
-					<Text style={[styles.sectionTitle, { marginTop: 20 }]}>
-						Contacto del veterinario
-					</Text>
-
-					{/* Nombre veterinario */}
-					<View style={styles.inputGroup}>
-						<Text style={styles.label}>Nombre *</Text>
-						<TextInput
-							style={styles.input}
-							value={veterinarioNombre}
-							onChangeText={setVeterinarioNombre}
-							placeholderTextColor="#ccc"
-							placeholder="Nombre del veterinario"
-						/>
-					</View>
-
-					{/* Teléfono veterinario */}
-					<View style={styles.inputGroup}>
-						<Text style={styles.label}>Teléfono *</Text>
-						<TextInput
-							style={styles.input}
-							value={veterinarioTelefono}
-							onChangeText={(text) => {
-								// Solo permitir números
-								const numeros = text.replace(/[^0-9]/g, "");
-								// Limitar a 8 dígitos
-								if (numeros.length <= 8) {
-									setVeterinarioTelefono(numeros);
-								}
-							}}
-							keyboardType="phone-pad"
-							placeholderTextColor="#ccc"
-							placeholder="12345678"
-							maxLength={8}
-						/>
-					</View>
-
-					{/* Cuidados especiales */}
-					<View style={styles.inputGroup}>
-						<Text style={styles.label}>Cuidados especiales (opcional)</Text>
-						<TextInput
-							style={[styles.input, styles.textArea]}
-							value={cuidadosEspeciales}
-							onChangeText={setCuidadosEspeciales}
-							placeholder="Comida especial, comportamiento, etc."
-							placeholderTextColor="#ccc"
-							multiline
-							numberOfLines={4}
-						/>
-					</View>
-
-					{/* Botón Guardar */}
-					<TouchableOpacity
-						style={styles.saveButton}
-						onPress={handleGuardar}
-					>
-						<Text style={styles.saveButtonText}>Guardar Mascota</Text>
-					</TouchableOpacity>
-				</View>
-			</ScrollView>
+				</ScrollView>
+			)}
 		</SafeAreaView>
 	);
 }
@@ -336,6 +326,16 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: "#fff8e7",
+	},
+	loadingContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	loadingText: {
+		marginTop: 16,
+		fontSize: 16,
+		color: "#6D4C41",
 	},
 	content: {
 		flex: 1,
@@ -396,27 +396,6 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: "#333",
 	},
-	uploadButton: {
-		backgroundColor: "#fff8e7",
-		borderRadius: 8,
-		paddingVertical: 16,
-		paddingHorizontal: 12,
-		alignItems: "center",
-		gap: 8,
-		borderWidth: 2,
-		borderColor: "#6b4226",
-	},
-	uploadButtonText: {
-		fontSize: 14,
-		color: "#6b4226",
-		fontWeight: "600",
-	},
-	toggleGroup: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-		paddingVertical: 12,
-	},
 	separator: {
 		height: 1,
 		backgroundColor: "#e0e0e0",
@@ -428,6 +407,9 @@ const styles = StyleSheet.create({
 		borderRadius: 8,
 		alignItems: "center",
 		marginTop: 20,
+	},
+	saveButtonDisabled: {
+		backgroundColor: "#a1887f",
 	},
 	saveButtonText: {
 		color: "#fff8e7",
