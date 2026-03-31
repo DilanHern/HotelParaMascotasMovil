@@ -1,6 +1,6 @@
 import { MobileHeader } from "@/components/MobileHeader";
 import { useRouter } from "expo-router";
-import { Bell, Calendar, Grid3x3, User } from "lucide-react-native";
+import { Bell, Calendar, Grid3x3, User, Heart } from "lucide-react-native";
 import React, { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -99,11 +99,12 @@ export default function HomeScreen() {
 					style={[styles.menuCard, styles.darkCard]}
 					onPress={() => router.push("/pets" as any)}
 				>
-						<View style={styles.menuTextContainer}>
-							<Text style={[styles.menuTitle, styles.darkText]}>Mis Mascotas</Text>
-							<Text style={[styles.menuSubtitle, styles.darkText]}>Editar, registrar o eliminar</Text>
-						</View>
-					</TouchableOpacity>
+				<Heart color="#fff8e7" size={24} />
+				<View style={styles.menuTextContainer}>
+					<Text style={[styles.menuTitle, styles.darkText]}>Mis Mascotas</Text>
+					<Text style={[styles.menuSubtitle, styles.darkText]}>Editar, registrar o eliminar</Text>
+				</View>
+			</TouchableOpacity>
 
 					{/* Cuadro 2 - Mis Reservas */}
 					<TouchableOpacity 
