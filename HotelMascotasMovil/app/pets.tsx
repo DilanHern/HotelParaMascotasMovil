@@ -63,8 +63,7 @@ export default function PetsScreen() {
 	]);
 
 	const handleEdit = (petId: number) => {
-		// TODO: Implementar edición
-		console.log("Editar mascota", petId);
+		router.push(`/EditPet?id=${petId}` as any);
 	};
 
 	const handleDelete = (petId: number) => {
