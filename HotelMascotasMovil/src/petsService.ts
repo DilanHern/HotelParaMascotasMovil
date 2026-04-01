@@ -10,6 +10,9 @@ interface Pet {
   gender?: boolean;
   profile_picture_url?: string;
   pet_type_id?: number;
+  veterinarian_name?: string;
+  veterinarian_cellphone?: string;
+  special_care_needs?: string;
 }
 
 interface PetType {
@@ -55,6 +58,7 @@ export async function getUserPetsWithTypes(): Promise<Pet[]> {
       weight,
       gender,
       profile_picture_url,
+      pet_type_id,
       pet_type:pet_type_id (
         name
       )
@@ -130,6 +134,10 @@ export async function getPetById(petId: string): Promise<Pet | null> {
       weight,
       gender,
       profile_picture_url,
+      pet_type_id,
+      veterinarian_name,
+      veterinarian_cellphone,
+      special_care_needs,
       pet_type:pet_type_id (
         name
       )
@@ -151,6 +159,9 @@ export async function getPetById(petId: string): Promise<Pet | null> {
     gender: data.gender,
     profile_picture_url: data.profile_picture_url,
     pet_type_id: data.pet_type_id,
+    veterinarian_name: data.veterinarian_name,
+    veterinarian_cellphone: data.veterinarian_cellphone,
+    special_care_needs: data.special_care_needs,
   };
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	StyleSheet,
 	Text,
@@ -7,6 +7,7 @@ import {
 	TouchableOpacity,
 	ScrollView,
 	Alert,
+	ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
@@ -16,23 +17,63 @@ import {
 	getCantonsByProvince,
 	getDistrictsByCanton,
 } from "@/utils/geographicData";
+import { getUserProfile, updateUserProfile } from "@/src/userService";
 
 export default function EditProfile() {
 	const router = useRouter();
-	
-	// Estados del usuario (inicialmente con datos mock)
-	const [nombre, setNombre] = useState("Juan Pérez");
-	const [email, setEmail] = useState("juan@example.com");
-	const [cedula, setCedula] = useState("123456789");
-	const [telefono, setTelefono] = useState("87654321");
+
+	// Estados del usuario
+	const [nombre, setNombre] = useState("");
+	const [apellido, setApellido] = useState("");
+	const [email, setEmail] = useState("");
+	const [cedula, setCedula] = useState("");
+	const [telefono, setTelefono] = useState("");
 	const [genero, setGenero] = useState("Masculino");
 	const [pais] = useState("Costa Rica");
-	const [provinciaId, setProvinciaId] = useState<number | null>(1);
+	const [provinciaId, setProvinciaId] = useState<number | null>(null);
 	const [cantonId, setCantonId] = useState<number | null>(null);
 	const [distritoId, setDistritoId] = useState<number | null>(null);
-	const [line1, setLine1] = useState("Calle Principal 123");
-	const [line2, setLine2] = useState("Apto 4");
+	const [line1, setLine1] = useState("");
+	const [line2, setLine2] = useState("");
 	const [loading, setLoading] = useState(false);
+	const [loadingProfile, setLoadingProfile] = useState(true);
+
+	useEffect(() => {
+		loadUserProfile();
+	}, []);
+
+	const loadUserProfile = async () => {
+		try {
+			setLoadingProfile(true);
+			const profile = await getUserProfile();
+
+			if (profile) {
+				setNombre(profile.firstname || "");
+				setApellido(profile.lastname || "");
+				setEmail(profile.email || "");
+				setCedula(profile.cedula || "");
+				setTelefono(profile.cellphone || "");
+
+				// Mapear gender: true = Masculino, false = Femenino
+				if (profile.gender === true) {
+					setGenero("Masculino");
+				} else if (profile.gender === false) {
+					setGenero("Femenino");
+				} else {
+					setGenero("Otro");
+				}
+
+				setLine1(profile.line1 || "");
+				setLine2(profile.line2 || "");
+				setDistritoId(profile.district_id || null);
+			}
+		} catch (error) {
+			console.error("Error loading profile:", error);
+			Alert.alert("Error", "No se pudo cargar el perfil");
+		} finally {
+			setLoadingProfile(false);
+		}
+	};
 
 	const handleCedulaChange = (text: string) => {
 		const numericText = text.replace(/[^0-9]/g, "");
@@ -50,7 +91,7 @@ export default function EditProfile() {
 
 	const handleActualizarPerfil = async () => {
 		// Validaciones
-		if (!nombre || !email || !cedula || !telefono || !distritoId) {
+		if (!nombre || !cedula || !telefono || !distritoId) {
 			Alert.alert("Error", "Por favor completá todos los campos obligatorios");
 			return;
 		}
@@ -68,29 +109,56 @@ export default function EditProfile() {
 		setLoading(true);
 
 		try {
-			// TODO: Integrar con Supabase para actualizar el perfil del usuario
-			console.log({
-				nombre,
-				email,
-				cedula,
-				telefono,
-				genero,
-				line1,
-				line2,
-				distritoId,
-			});
+			// Mapear género a boolean
+			let genderBool: boolean | null = null;
+			if (genero === "Masculino") {
+				genderBool = true;
+			} else if (genero === "Femenino") {
+				genderBool = false;
+			}
+
+			const updateData: any = {
+				firstname: nombre,
+				lastname: apellido,
+				cedula: cedula,
+				cellphone: telefono,
+				line1: line1 || "",
+				line2: line2 || "",
+				district_id: Number(distritoId),
+			};
+
+			if (genderBool !== null) {
+				updateData.gender = genderBool;
+			}
+
+			console.log("Enviando datos:", updateData);
+
+			await updateUserProfile(updateData);
 
 			Alert.alert("Éxito", "Perfil actualizado correctamente");
-			
+
 			setTimeout(() => {
 				router.replace("/home" as any);
 			}, 500);
 		} catch (e: any) {
+			console.error("Error completo:", e);
 			Alert.alert("Error", e.message || "Error inesperado");
 		} finally {
 			setLoading(false);
 		}
 	};
+
+	if (loadingProfile) {
+		return (
+			<View style={styles.container}>
+				<MobileHeader title="Editar Perfil" showBack={true} backPath="/home" />
+				<View style={styles.loadingContainer}>
+					<ActivityIndicator size="large" color="#6D4C41" />
+					<Text style={styles.loadingText}>Cargando perfil...</Text>
+				</View>
+			</View>
+		);
+	}
 
 	return (
 		<View style={styles.container}>
@@ -101,13 +169,26 @@ export default function EditProfile() {
 				<Text style={styles.subtitle}>Actualiza tu información</Text>
 
 				<View style={styles.inputGroup}>
-					<Text style={styles.label}>Nombre Completo</Text>
+					<Text style={styles.label}>Nombre</Text>
 					<TextInput
 						style={styles.input}
 						value={nombre}
 						onChangeText={setNombre}
-						placeholder="Ej: Juan Pérez"
+						placeholder="Tu nombre"
 						placeholderTextColor="#999"
+						editable={!loading}
+					/>
+				</View>
+
+				<View style={styles.inputGroup}>
+					<Text style={styles.label}>Apellido</Text>
+					<TextInput
+						style={styles.input}
+						value={apellido}
+						onChangeText={setApellido}
+						placeholder="Tu apellido"
+						placeholderTextColor="#999"
+						editable={!loading}
 					/>
 				</View>
 
@@ -116,11 +197,8 @@ export default function EditProfile() {
 					<TextInput
 						style={styles.input}
 						value={email}
-						onChangeText={setEmail}
-						keyboardType="email-address"
-						autoCapitalize="none"
-						placeholderTextColor="#999"
 						editable={false}
+						placeholderTextColor="#999"
 					/>
 					<Text style={styles.helpText}>No puedes cambiar tu correo electrónico</Text>
 				</View>
@@ -135,6 +213,7 @@ export default function EditProfile() {
 						keyboardType="numeric"
 						maxLength={9}
 						placeholderTextColor="#999"
+						editable={!loading}
 					/>
 					{cedula.length > 0 && cedula.length < 9 && (
 						<Text style={styles.errorText}>La cédula debe tener 9 dígitos</Text>
@@ -151,6 +230,7 @@ export default function EditProfile() {
 						keyboardType="numeric"
 						maxLength={8}
 						placeholderTextColor="#999"
+						editable={!loading}
 					/>
 					{telefono.length > 0 && telefono.length < 8 && (
 						<Text style={styles.errorText}>El teléfono debe tener 8 dígitos</Text>
@@ -163,6 +243,7 @@ export default function EditProfile() {
 						<TouchableOpacity
 							style={[styles.optionButton, genero === "Masculino" && styles.optionButtonActive]}
 							onPress={() => setGenero("Masculino")}
+							disabled={loading}
 						>
 							<Text style={[styles.optionButtonText, genero === "Masculino" && styles.optionButtonTextActive]}>
 								Masculino
@@ -171,6 +252,7 @@ export default function EditProfile() {
 						<TouchableOpacity
 							style={[styles.optionButton, genero === "Femenino" && styles.optionButtonActive]}
 							onPress={() => setGenero("Femenino")}
+							disabled={loading}
 						>
 							<Text style={[styles.optionButtonText, genero === "Femenino" && styles.optionButtonTextActive]}>
 								Femenino
@@ -179,6 +261,7 @@ export default function EditProfile() {
 						<TouchableOpacity
 							style={[styles.optionButton, genero === "Otro" && styles.optionButtonActive]}
 							onPress={() => setGenero("Otro")}
+							disabled={loading}
 						>
 							<Text style={[styles.optionButtonText, genero === "Otro" && styles.optionButtonTextActive]}>
 								Otro
@@ -238,6 +321,7 @@ export default function EditProfile() {
 						value={line1}
 						onChangeText={setLine1}
 						placeholderTextColor="#999"
+						editable={!loading}
 					/>
 				</View>
 
@@ -248,6 +332,7 @@ export default function EditProfile() {
 						value={line2}
 						onChangeText={setLine2}
 						placeholderTextColor="#999"
+						editable={!loading}
 					/>
 				</View>
 
@@ -269,6 +354,16 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: "#fff8e7",
+	},
+	loadingContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	loadingText: {
+		marginTop: 16,
+		fontSize: 16,
+		color: "#6D4C41",
 	},
 	scrollView: {
 		flex: 1,

@@ -83,15 +83,15 @@ export default function EditPet() {
 					setTipoAnimalId(petData.pet_type_id || null);
 					setRaza(petData.race);
 					setPeso(petData.weight?.toString() || "");
-					setDescripcion("");
+					setDescripcion(petData.special_care_needs || "");
 
 					// Buscar el género
 					const genderIdValue = petData.gender === true ? 1 : petData.gender === false ? 2 : null;
 					setGeneroId(genderIdValue);
 
-					setVeterinarioNombre("");
-					setVeterinarioTelefono("");
-					setCuidadosEspeciales("");
+					setVeterinarioNombre(petData.veterinarian_name || "");
+					setVeterinarioTelefono(petData.veterinarian_cellphone || "");
+					setCuidadosEspeciales(petData.special_care_needs || "");
 				}
 			}
 		} catch (error) {
