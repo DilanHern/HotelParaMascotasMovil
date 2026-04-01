@@ -32,7 +32,7 @@ interface CreatePetData {
 
 export async function getPetTypes(): Promise<PetType[]> {
   const { data, error } = await supabase
-    .from("Pl_PetTypes")
+    .from("pl_pettypes")
     .select("id, name")
     .order("name");
 
@@ -46,7 +46,7 @@ export async function getUserPetsWithTypes(): Promise<Pet[]> {
   if (!user) throw new Error("No user logged in");
 
   const { data, error } = await supabase
-    .from("Pl_Pets")
+    .from("pl_pets")
     .select(`
       id,
       name,
@@ -82,7 +82,7 @@ export async function createPet(petData: CreatePetData): Promise<Pet> {
   if (!user) throw new Error("No user logged in");
 
   const { data, error } = await supabase
-    .from("Pl_Pets")
+    .from("pl_pets")
     .insert([
       {
         name: petData.name,
@@ -107,7 +107,7 @@ export async function createPet(petData: CreatePetData): Promise<Pet> {
 
 export async function deletePet(petId: string): Promise<void> {
   const { error } = await supabase
-    .from("Pl_Pets")
+    .from("pl_pets")
     .delete()
     .eq("id", petId);
 

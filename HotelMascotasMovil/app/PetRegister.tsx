@@ -6,9 +6,11 @@ import {
 	TextInput,
 	TouchableOpacity,
 	ScrollView,
+	Switch,
 	Alert,
+	Modal,
+	Image,
 	ActivityIndicator,
-	Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -16,11 +18,18 @@ import { MobileHeader } from "@/components/MobileHeader";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Upload } from "lucide-react-native";
 import { DropdownSelect } from "@/components/DropdownSelect";
+import * as ImagePicker from "expo-image-picker";
 import { getPetTypes, createPet } from "@/src/petsService";
 
 interface DropdownOption {
 	id: number;
 	name: string;
+}
+
+interface SelectedImage {
+	uri: string;
+	name: string;
+	mimeType?: string;
 }
 
 const generoOptions: DropdownOption[] = [
@@ -31,6 +40,7 @@ const generoOptions: DropdownOption[] = [
 export default function PetRegister() {
 	const router = useRouter();
 	const [animalOptions, setAnimalOptions] = useState<DropdownOption[]>([]);
+	const [loadingPetTypes, setLoadingPetTypes] = useState(true);
 
 	// Estados para información de la mascota
 	const [nombre, setNombre] = useState("");
@@ -41,9 +51,8 @@ export default function PetRegister() {
 	const [raza, setRaza] = useState("");
 	const [peso, setPeso] = useState("");
 	const [descripcion, setDescripcion] = useState("");
-	const [fotoUri, setFotoUri] = useState("");
+	const [foto, setFoto] = useState<SelectedImage | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [loadingPetTypes, setLoadingPetTypes] = useState(true);
 
 	// Estados para contacto del veterinario
 	const [veterinarioNombre, setVeterinarioNombre] = useState("");
@@ -67,14 +76,33 @@ export default function PetRegister() {
 	};
 
 	const handleDateChange = (event: any, selectedDate?: Date) => {
-		if (event.type === "dismissed") {
-			setShowDatePicker(false);
-			return;
-		}
 		if (selectedDate) {
 			setFechaNacimiento(selectedDate);
-			setShowDatePicker(false);
 		}
+	};
+
+	const pickImage = async () => {
+		const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+		if (!permission.granted) {
+			Alert.alert("Permiso requerido", "Debes permitir acceso a tu galería.");
+			return;
+		}
+
+		const result = await ImagePicker.launchImageLibraryAsync({
+			mediaTypes: ["images"],
+			allowsEditing: false,
+			quality: 0.9,
+		});
+
+		if (result.canceled || !result.assets?.length) return;
+
+		const asset = result.assets[0];
+		const pickedName = asset.fileName || `pet_image_${Date.now()}.jpg`;
+		setFoto({
+			uri: asset.uri,
+			name: pickedName,
+			mimeType: asset.mimeType,
+		});
 	};
 
 	const getTipoAnimal = () => animalOptions.find(o => o.id === tipoAnimalId)?.name || "";
@@ -114,8 +142,8 @@ export default function PetRegister() {
 				gender: genderBool,
 				veterinarian_name: veterinarioNombre,
 				veterinarian_cellphone: veterinarioTelefono,
-				special_care_needs: cuidadosEspeciales,
-				profile_picture_url: fotoUri || undefined,
+				special_care_needs: cuidadosEspeciales || undefined,
+				profile_picture_url: foto?.uri || undefined,
 			});
 
 			Alert.alert("Éxito", "Mascota registrada correctamente");
@@ -160,163 +188,193 @@ export default function PetRegister() {
 							/>
 						</View>
 
-						{/* Fecha de nacimiento */}
-						<View style={styles.inputGroup}>
-							<Text style={styles.label}>Fecha de nacimiento *</Text>
-							{showDatePicker && (
-								<DateTimePicker
-									value={fechaNacimiento}
-									mode="date"
-									display={Platform.OS === "ios" ? "spinner" : "default"}
-									onChange={handleDateChange}
-									maximumDate={new Date()}
-								/>
-							)}
-							<TouchableOpacity
-								style={styles.dateButton}
-								onPress={() => setShowDatePicker(true)}
-								disabled={loading}
-							>
-								<Text style={styles.dateButtonText}>
-									{fechaNacimiento.toLocaleDateString()}
-								</Text>
-							</TouchableOpacity>
-						</View>
-
-						{/* Tipo de animal */}
-						<View style={styles.inputGroup}>
-							<DropdownSelect
-								label="Tipo de animal *"
-								options={animalOptions}
-								selectedId={tipoAnimalId}
-								onSelect={(option) => setTipoAnimalId(option.id)}
-								placeholder="Selecciona"
-							/>
-						</View>
-
-						{/* Género */}
-						<View style={styles.inputGroup}>
-							<DropdownSelect
-								label="Género *"
-								options={generoOptions}
-								selectedId={generoId}
-								onSelect={(option) => setGeneroId(option.id)}
-								placeholder="Selecciona"
-							/>
-						</View>
-
-						{/* Raza */}
-						<View style={styles.inputGroup}>
-							<Text style={styles.label}>Raza *</Text>
-							<TextInput
-								style={styles.input}
-								value={raza}
-								onChangeText={setRaza}
-								placeholderTextColor="#ccc"
-								placeholder="Ej: Persa"
-								editable={!loading}
-							/>
-						</View>
-
-						{/* Peso */}
-						<View style={styles.inputGroup}>
-							<Text style={styles.label}>Peso (kg) *</Text>
-							<TextInput
-								style={styles.input}
-								value={peso}
-								onChangeText={setPeso}
-								keyboardType="decimal-pad"
-								placeholderTextColor="#ccc"
-								placeholder="Ej: 4.5"
-								editable={!loading}
-							/>
-						</View>
-
-						{/* Descripción */}
-						<View style={styles.inputGroup}>
-							<Text style={styles.label}>Descripción</Text>
-							<TextInput
-								style={[styles.input, styles.textArea]}
-								value={descripcion}
-								onChangeText={setDescripcion}
-								placeholder="Características especiales de tu mascota"
-								placeholderTextColor="#ccc"
-								multiline
-								numberOfLines={4}
-								editable={!loading}
-							/>
-						</View>
-
-						{/* Línea separadora */}
-						<View style={styles.separator} />
-
-						{/* Contacto del veterinario */}
-						<Text style={[styles.sectionTitle, { marginTop: 20 }]}>
-							Contacto del veterinario
-						</Text>
-
-						{/* Nombre veterinario */}
-						<View style={styles.inputGroup}>
-							<Text style={styles.label}>Nombre *</Text>
-							<TextInput
-								style={styles.input}
-								value={veterinarioNombre}
-								onChangeText={setVeterinarioNombre}
-								placeholderTextColor="#ccc"
-								placeholder="Nombre del veterinario"
-								editable={!loading}
-							/>
-						</View>
-
-						{/* Teléfono veterinario */}
-						<View style={styles.inputGroup}>
-							<Text style={styles.label}>Teléfono *</Text>
-							<TextInput
-								style={styles.input}
-								value={veterinarioTelefono}
-								onChangeText={(text) => {
-									// Solo permitir números
-									const numeros = text.replace(/[^0-9]/g, "");
-									// Limitar a 8 dígitos
-									if (numeros.length <= 8) {
-										setVeterinarioTelefono(numeros);
-									}
-								}}
-								keyboardType="phone-pad"
-								placeholderTextColor="#ccc"
-								placeholder="12345678"
-								maxLength={8}
-								editable={!loading}
-							/>
-						</View>
-
-						{/* Cuidados especiales */}
-						<View style={styles.inputGroup}>
-							<Text style={styles.label}>Cuidados especiales (opcional)</Text>
-							<TextInput
-								style={[styles.input, styles.textArea]}
-								value={cuidadosEspeciales}
-								onChangeText={setCuidadosEspeciales}
-								placeholder="Comida especial, comportamiento, etc."
-								placeholderTextColor="#ccc"
-								multiline
-								numberOfLines={4}
-								editable={!loading}
-							/>
-						</View>
-
-						{/* Botón Guardar */}
+					{/* Fecha de nacimiento */}
+					<View style={styles.inputGroup}>
+						<Text style={styles.label}>Fecha de nacimiento *</Text>
 						<TouchableOpacity
-							style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-							onPress={handleGuardar}
-							disabled={loading}
+							style={styles.dateButton}
+							onPress={() => setShowDatePicker(true)}
 						>
-							<Text style={styles.saveButtonText}>
-								{loading ? "Guardando..." : "Guardar Mascota"}
+							<Text style={styles.dateButtonText}>
+								{fechaNacimiento.toLocaleDateString()}
 							</Text>
 						</TouchableOpacity>
+						<Modal
+							transparent={true}
+							animationType="fade"
+							visible={showDatePicker}
+							onRequestClose={() => setShowDatePicker(false)}
+						>
+							<View style={styles.datePickerModalOverlay}>
+								<View style={styles.datePickerModalContent}>
+									<DateTimePicker
+										value={fechaNacimiento}
+										mode="date"
+										display="spinner"
+										onChange={handleDateChange}
+										textColor="#333"
+										maximumDate={new Date()}
+									/>
+									<TouchableOpacity
+										style={styles.datePickerConfirmButton}
+										onPress={() => setShowDatePicker(false)}
+									>
+										<Text style={styles.datePickerConfirmButtonText}>Confirmar</Text>
+									</TouchableOpacity>
+								</View>
+							</View>
+						</Modal>
 					</View>
-				</ScrollView>
+
+					{/* Tipo de animal */}
+					<View style={styles.inputGroup}>
+						<DropdownSelect
+							label="Tipo de animal *"
+							options={animalOptions}
+							selectedId={tipoAnimalId}
+							onSelect={(option) => setTipoAnimalId(option.id)}
+							placeholder="Selecciona"
+						/>
+					</View>
+
+					{/* Género */}
+					<View style={styles.inputGroup}>
+						<DropdownSelect
+							label="Género *"
+							options={generoOptions}
+							selectedId={generoId}
+							onSelect={(option) => setGeneroId(option.id)}
+							placeholder="Selecciona"
+						/>
+					</View>
+
+					{/* Raza */}
+					<View style={styles.inputGroup}>
+						<Text style={styles.label}>Raza *</Text>
+						<TextInput
+							style={styles.input}
+							value={raza}
+							onChangeText={setRaza}
+							placeholderTextColor="#ccc"
+							placeholder="Ej: Persa"
+							editable={!loading}
+						/>
+					</View>
+
+					{/* Peso */}
+					<View style={styles.inputGroup}>
+						<Text style={styles.label}>Peso (kg) *</Text>
+						<TextInput
+							style={styles.input}
+							value={peso}
+							onChangeText={setPeso}
+							keyboardType="decimal-pad"
+							placeholderTextColor="#ccc"
+							placeholder="Ej: 4.5"
+							editable={!loading}
+						/>
+					</View>
+
+					{/* Descripción */}
+					<View style={styles.inputGroup}>
+						<Text style={styles.label}>Descripción</Text>
+						<TextInput
+							style={[styles.input, styles.textArea]}
+							value={descripcion}
+							onChangeText={setDescripcion}
+							placeholder="Características especiales de tu mascota"
+							placeholderTextColor="#ccc"
+							multiline
+							numberOfLines={4}
+							editable={!loading}
+						/>
+					</View>
+
+					{/* Foto */}
+					<View style={styles.inputGroup}>
+						<Text style={styles.label}>Foto (opcional)</Text>
+						<TouchableOpacity style={styles.uploadButton} onPress={pickImage} disabled={loading}>
+							<Upload color="#6b4226" size={24} />
+							<Text style={styles.uploadButtonText}>Seleccionar imagen</Text>
+						</TouchableOpacity>
+						{foto?.uri && (
+							<>
+								<Image source={{ uri: foto.uri }} style={styles.imagePreview} />
+								<Text style={styles.imageName}>{foto.name}</Text>
+							</>
+						)}
+					</View>
+
+					{/* Línea separadora */}
+					<View style={styles.separator} />
+
+					{/* Contacto del veterinario */}
+					<Text style={[styles.sectionTitle, { marginTop: 20 }]}>
+						Contacto del veterinario
+					</Text>
+
+					{/* Nombre veterinario */}
+					<View style={styles.inputGroup}>
+						<Text style={styles.label}>Nombre *</Text>
+						<TextInput
+							style={styles.input}
+							value={veterinarioNombre}
+							onChangeText={setVeterinarioNombre}
+							placeholderTextColor="#ccc"
+							placeholder="Nombre del veterinario"
+							editable={!loading}
+						/>
+					</View>
+
+					{/* Teléfono veterinario */}
+					<View style={styles.inputGroup}>
+						<Text style={styles.label}>Teléfono *</Text>
+						<TextInput
+							style={styles.input}
+							value={veterinarioTelefono}
+							onChangeText={(text) => {
+								// Solo permitir números
+								const numeros = text.replace(/[^0-9]/g, "");
+								// Limitar a 8 dígitos
+								if (numeros.length <= 8) {
+									setVeterinarioTelefono(numeros);
+								}
+							}}
+							keyboardType="phone-pad"
+							placeholderTextColor="#ccc"
+							placeholder="12345678"
+							maxLength={8}
+							editable={!loading}
+						/>
+					</View>
+
+					{/* Cuidados especiales */}
+					<View style={styles.inputGroup}>
+						<Text style={styles.label}>Cuidados especiales (opcional)</Text>
+						<TextInput
+							style={[styles.input, styles.textArea]}
+							value={cuidadosEspeciales}
+							onChangeText={setCuidadosEspeciales}
+							placeholder="Comida especial, comportamiento, etc."
+							placeholderTextColor="#ccc"
+							multiline
+							numberOfLines={4}
+							editable={!loading}
+						/>
+					</View>
+
+					{/* Botón Guardar */}
+					<TouchableOpacity
+						style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+						onPress={handleGuardar}
+						disabled={loading}
+					>
+						<Text style={styles.saveButtonText}>
+							{loading ? "Guardando..." : "Guardar Mascota"}
+						</Text>
+					</TouchableOpacity>
+				</View>
+			</ScrollView>
 			)}
 		</SafeAreaView>
 	);
@@ -326,16 +384,6 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: "#fff8e7",
-	},
-	loadingContainer: {
-		flex: 1,
-		justifyContent: "center",
-		alignItems: "center",
-	},
-	loadingText: {
-		marginTop: 16,
-		fontSize: 16,
-		color: "#6D4C41",
 	},
 	content: {
 		flex: 1,
@@ -396,6 +444,27 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: "#333",
 	},
+	uploadButton: {
+		backgroundColor: "#fff8e7",
+		borderRadius: 8,
+		paddingVertical: 16,
+		paddingHorizontal: 12,
+		alignItems: "center",
+		gap: 8,
+		borderWidth: 2,
+		borderColor: "#6b4226",
+	},
+	uploadButtonText: {
+		fontSize: 14,
+		color: "#6b4226",
+		fontWeight: "600",
+	},
+	toggleGroup: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		paddingVertical: 12,
+	},
 	separator: {
 		height: 1,
 		backgroundColor: "#e0e0e0",
@@ -408,12 +477,56 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		marginTop: 20,
 	},
-	saveButtonDisabled: {
-		backgroundColor: "#a1887f",
-	},
 	saveButtonText: {
 		color: "#fff8e7",
 		fontSize: 16,
 		fontWeight: "700",
+	},
+	saveButtonDisabled: {
+		backgroundColor: "#a1887f",
+	},
+	loadingContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	loadingText: {
+		marginTop: 16,
+		fontSize: 16,
+		color: "#6D4C41",
+	},
+	datePickerModalOverlay: {
+		flex: 1,
+		backgroundColor: "rgba(0, 0, 0, 0.5)",
+		justifyContent: "flex-end",
+	},
+	datePickerModalContent: {
+		backgroundColor: "#ffffff",
+		paddingBottom: 20,
+		borderTopLeftRadius: 20,
+		borderTopRightRadius: 20,
+	},
+	datePickerConfirmButton: {
+		paddingVertical: 12,
+		alignItems: "center",
+		borderTopWidth: 1,
+		borderTopColor: "#e0e0e0",
+	},
+	datePickerConfirmButtonText: {
+		color: "#6b4226",
+		fontSize: 16,
+		fontWeight: "600",
+	},
+	imagePreview: {
+		width: "100%",
+		height: 180,
+		borderRadius: 8,
+		marginTop: 12,
+		backgroundColor: "#f0f0f0",
+	},
+	imageName: {
+		fontSize: 12,
+		color: "#666",
+		marginTop: 8,
 	},
 });

@@ -25,7 +25,7 @@ export async function getUserPets(): Promise<Pet[]> {
   if (!user) throw new Error("No user logged in");
 
   const { data, error } = await supabase
-    .from("Pl_Pets")
+    .from("pl_pets")
     .select("id, name, race, birthdate, profile_picture_url, weight, pet_type_id, gender")
     .eq("owner_id", user.id);
 
@@ -39,7 +39,7 @@ export async function getUserProfile(): Promise<UserProfile> {
   if (!user) throw new Error("No user logged in");
 
   const { data, error } = await supabase
-    .from("Pl_Users")
+    .from("pl_users")
     .select("id, firstname, lastname, email, cellphone")
     .eq("id", user.id)
     .single();
