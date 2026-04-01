@@ -1,44 +1,60 @@
 import { MobileHeader } from "@/components/MobileHeader";
 import { useRouter } from "expo-router";
 import { Bell, Calendar, Grid3x3, User, Heart } from "lucide-react-native";
-import React, { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useState, useEffect } from "react";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-
+import { getHomeData } from "@/src/homeService";
 
 interface Pet {
 	id: string;
 	name: string;
-	breed: string;
-	animal: string;
-	age: number;
-	weight: number;
-	image?: string;
+	race: string;
+	birthdate: string;
+	weight?: number;
+	profile_picture_url?: string;
+	pet_type_id?: number;
+	gender?: boolean;
 }
 
 export default function HomeScreen() {
 	const router = useRouter();
-	const [pets] = useState<Pet[]>([
-		{
-			id: "1",
-			name: "Luffy",
-			breed: "Persa",
-			animal: "Gato",
-			age: 2,
-			weight: 4.5,
-			image: undefined,
-		},
-		{
-			id: "2",
-			name: "Max",
-			breed: "Labrador",
-			animal: "Perro",
-			age: 3,
-			weight: 30,
-			image: undefined,
-		},
-	]);
+	const [pets, setPets] = useState<Pet[]>([]);
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		loadHomeData();
+	}, []);
+
+	const loadHomeData = async () => {
+		try {
+			setLoading(true);
+			const data = await getHomeData();
+			setPets(data.pets || []);
+		} catch (error) {
+			console.error("Error loading home data:", error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const calculateAge = (birthdate: string): number => {
+		const birth = new Date(birthdate);
+		const now = new Date();
+		return Math.floor((now.getTime() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+	};
+
+	if (loading) {
+		return (
+			<SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+				<MobileHeader title="PetLodge" showLogout />
+				<View style={styles.loadingContainer}>
+					<ActivityIndicator size="large" color="#6D4C41" />
+					<Text style={styles.loadingText}>Cargando mascotas...</Text>
+				</View>
+			</SafeAreaView>
+		);
+	}
 
 	return (
 		<SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -50,46 +66,52 @@ export default function HomeScreen() {
 
 				{/* Subtítulo */}
 				<Text style={styles.subtitle}>Gestiona tus mascotas y reservas</Text>
-            
+
 				{/* Cards de mascotas */}
 				<View style={styles.petsContainer}>
-					{pets.map((pet) => (
-						<View key={pet.id} style={styles.petCard}>
-							{/* Imagen o icono de huella */}
-							<View style={styles.imageContainer}>
-								{pet.image ? (
-									<Image
-										source={{ uri: pet.image }}
-										style={styles.petImage}
-										resizeMode="cover"
-									/>
-								) : (
-									<Image
-										source={require("@/assets/images/huellaGato.png")}
-										style={styles.petImage}
-										resizeMode="contain"
-									/>
-								)}
-                                
-							</View>
+					{pets.length > 0 ? (
+						pets.map((pet) => (
+							<View key={pet.id} style={styles.petCard}>
+								{/* Imagen o icono de huella */}
+								<View style={styles.imageContainer}>
+									{pet.profile_picture_url ? (
+										<Image
+											source={{ uri: pet.profile_picture_url }}
+											style={styles.petImage}
+											resizeMode="cover"
+										/>
+									) : (
+										<Image
+											source={require("@/assets/images/huellaGato.png")}
+											style={styles.petImage}
+											resizeMode="contain"
+										/>
+									)}
 
-							{/* Información de la mascota */}
-							<View style={styles.petInfo}>
-								<Text style={styles.petName}>{pet.name}</Text>
-								<Text style={styles.petBreed}>
-									{pet.breed} - {pet.animal}
-								</Text>
-								<View style={styles.petDetailsRow}>
-									<Text style={styles.petDetail}>
-										Edad: {pet.age} años
+								</View>
+
+								{/* Información de la mascota */}
+								<View style={styles.petInfo}>
+									<Text style={styles.petName}>{pet.name}</Text>
+									<Text style={styles.petBreed}>
+										{pet.race}
 									</Text>
-									<Text style={styles.petDetail}>
-										Peso: {pet.weight} kg
-									</Text>
+									<View style={styles.petDetailsRow}>
+										<Text style={styles.petDetail}>
+											Edad: {calculateAge(pet.birthdate)} años
+										</Text>
+										{pet.weight && (
+											<Text style={styles.petDetail}>
+												Peso: {pet.weight} kg
+											</Text>
+										)}
+									</View>
 								</View>
 							</View>
-						</View>
-					))}
+						))
+					) : (
+						<Text style={styles.noDataText}>No tienes mascotas registradas</Text>
+					)}
 				</View>
 
 				{/* Menu Cards */}
@@ -148,6 +170,22 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: "#fff8e7",
+	},
+	loadingContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	loadingText: {
+		marginTop: 16,
+		fontSize: 16,
+		color: "#6b4226",
+	},
+	noDataText: {
+		fontSize: 16,
+		color: "#8b6f47",
+		textAlign: "center",
+		paddingVertical: 24,
 	},
 	content: {
 		flex: 1,

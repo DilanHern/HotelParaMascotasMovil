@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
 	StyleSheet,
 	Text,
@@ -6,69 +6,91 @@ import {
 	Image,
 	ScrollView,
 	TouchableOpacity,
+	ActivityIndicator,
+	Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
 import { Plus, Edit, Trash2 } from "lucide-react-native";
+import { getUserPetsWithTypes, deletePet } from "@/src/petsService";
 
 interface Pet {
-	id: number;
+	id: string;
 	name: string;
-	breed: string;
+	race: string;
 	animal: string;
-	age: number;
-	weight: number;
-	size: "Pequeño" | "Mediano" | "Grande";
-	gender: "Macho" | "Hembra";
-	image?: string;
+	birthdate: string;
+	weight?: number;
+	gender?: boolean;
+	profile_picture_url?: string;
 }
 
 export default function PetsScreen() {
 	const router = useRouter();
-	const [pets] = useState<Pet[]>([
-		{
-			id: 1,
-			name: "Luffy",
-			breed: "Persa",
-			animal: "Gato",
-			age: 2,
-			weight: 4.5,
-			size: "Pequeño",
-			gender: "Macho",
-			image: undefined,
-		},
-		{
-			id: 2,
-			name: "Max",
-			breed: "Labrador",
-			animal: "Perro",
-			age: 3,
-			weight: 30,
-			size: "Grande",
-			gender: "Macho",
-			image: undefined,
-		},
-		{
-			id: 3,
-			name: "Bella",
-			breed: "Siamés",
-			animal: "Gato",
-			age: 1,
-			weight: 3.2,
-			size: "Pequeño",
-			gender: "Hembra",
-			image: undefined,
-		},
-	]);
+	const [pets, setPets] = useState<Pet[]>([]);
+	const [loading, setLoading] = useState(true);
 
-	const handleEdit = (petId: number) => {
+	useFocusEffect(
+		React.useCallback(() => {
+			loadPets();
+		}, [])
+	);
+
+	const loadPets = async () => {
+		try {
+			setLoading(true);
+			const data = await getUserPetsWithTypes();
+			setPets(data || []);
+		} catch (error) {
+			console.error("Error loading pets:", error);
+			Alert.alert("Error", "No se pudieron cargar las mascotas");
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const calculateAge = (birthdate: string): number => {
+		const birth = new Date(birthdate);
+		const now = new Date();
+		return Math.floor((now.getTime() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+	};
+
+	const getGenderText = (gender?: boolean): string => {
+		if (gender === undefined) return "N/A";
+		return gender ? "Macho" : "Hembra";
+	};
+
+	const handleEdit = (petId: string) => {
 		router.push(`/EditPet?id=${petId}` as any);
 	};
 
-	const handleDelete = (petId: number) => {
-		// TODO: Implementar eliminación
-		console.log("Eliminar mascota", petId);
+	const handleDelete = (petId: string, petName: string) => {
+		Alert.alert(
+			"Eliminar mascota",
+			`¿Estás seguro de que deseas eliminar a ${petName}?`,
+			[
+				{
+					text: "Cancelar",
+					onPress: () => {},
+					style: "cancel",
+				},
+				{
+					text: "Eliminar",
+					onPress: async () => {
+						try {
+							await deletePet(petId);
+							setPets(pets.filter((p) => p.id !== petId));
+							Alert.alert("Éxito", "Mascota eliminada correctamente");
+						} catch (error) {
+							console.error("Error deleting pet:", error);
+							Alert.alert("Error", "No se pudo eliminar la mascota");
+						}
+					},
+					style: "destructive",
+				},
+			]
+		);
 	};
 
 	return (
@@ -88,80 +110,92 @@ export default function PetsScreen() {
 			</View>
 
 			{/* Lista de Mascotas */}
-			<ScrollView
-				style={styles.content}
-				showsVerticalScrollIndicator={false}
-				contentContainerStyle={styles.scrollContent}
-			>
-				{pets.map((pet) => (
-					<View key={pet.id} style={styles.petCard}>
-						{/* Contenedor de imagen e info */}
-						<View style={styles.petContentRow}>
-							{/* Imagen */}
-							<View style={styles.imageContainer}>
-								{pet.image ? (
-									<Image
-										source={{ uri: pet.image }}
-										style={styles.petImage}
-										resizeMode="cover"
-									/>
-								) : (
-									<Image
-										source={require("@/assets/images/huellaGato.png")}
-										style={styles.petImage}
-										resizeMode="contain"
-									/>
-								)}
+			{loading ? (
+				<View style={styles.loadingContainer}>
+					<ActivityIndicator size="large" color="#6D4C41" />
+					<Text style={styles.loadingText}>Cargando mascotas...</Text>
+				</View>
+			) : pets.length === 0 ? (
+				<View style={styles.emptyContainer}>
+					<Text style={styles.emptyText}>No tienes mascotas registradas</Text>
+				</View>
+			) : (
+				<ScrollView
+					style={styles.content}
+					showsVerticalScrollIndicator={false}
+					contentContainerStyle={styles.scrollContent}
+				>
+					{pets.map((pet) => (
+						<View key={pet.id} style={styles.petCard}>
+							{/* Contenedor de imagen e info */}
+							<View style={styles.petContentRow}>
+								{/* Imagen */}
+								<View style={styles.imageContainer}>
+									{pet.profile_picture_url ? (
+										<Image
+											source={{ uri: pet.profile_picture_url }}
+											style={styles.petImage}
+											resizeMode="cover"
+										/>
+									) : (
+										<Image
+											source={require("@/assets/images/huellaGato.png")}
+											style={styles.petImage}
+											resizeMode="contain"
+										/>
+									)}
+								</View>
+
+								{/* Información */}
+								<View style={styles.petInfo}>
+									{/* Nombre */}
+									<View style={styles.headerRow}>
+										<Text style={styles.petName}>{pet.name}</Text>
+										<Text style={styles.petId}>ID: {pet.id.substring(0, 8)}</Text>
+									</View>
+
+									{/* Raza - Animal */}
+									<Text style={styles.petBreed}>
+										{pet.race} - {pet.animal}
+									</Text>
+
+									{/* Edad y Peso */}
+									<View style={styles.detailsRow}>
+										<Text style={styles.petDetail}>Edad: {calculateAge(pet.birthdate)} años</Text>
+										{pet.weight && (
+											<Text style={styles.petDetail}>Peso: {pet.weight} kg</Text>
+										)}
+									</View>
+
+									{/* Género */}
+									<View style={styles.detailsRow}>
+										<Text style={styles.petDetail}>Género: {getGenderText(pet.gender)}</Text>
+									</View>
+								</View>
 							</View>
 
-							{/* Información */}
-							<View style={styles.petInfo}>
-								{/* ID y Nombre */}
-								<View style={styles.headerRow}>
-									<Text style={styles.petName}>{pet.name}</Text>
-									<Text style={styles.petId}>ID: {pet.id}</Text>
-								</View>
+							{/* Botones de Acción */}
+							<View style={styles.actionsContainer}>
+								<TouchableOpacity
+									style={styles.editButton}
+									onPress={() => handleEdit(pet.id)}
+								>
+									<Edit color="#6b4226" size={18} />
+									<Text style={styles.editButtonText}>Editar</Text>
+								</TouchableOpacity>
 
-								{/* Raza - Animal */}
-								<Text style={styles.petBreed}>
-									{pet.breed} - {pet.animal}
-								</Text>
-
-								{/* Edad y Peso */}
-								<View style={styles.detailsRow}>
-									<Text style={styles.petDetail}>Edad: {pet.age} años</Text>
-									<Text style={styles.petDetail}>Peso: {pet.weight} kg</Text>
-								</View>
-
-								{/* Tamaño y Género */}
-								<View style={styles.detailsRow}>
-									<Text style={styles.petDetail}>Tamaño: {pet.size}</Text>
-									<Text style={styles.petDetail}>Género: {pet.gender}</Text>
-								</View>
+								<TouchableOpacity
+									style={styles.deleteButton}
+									onPress={() => handleDelete(pet.id, pet.name)}
+								>
+									<Trash2 color="#ffffff" size={18} />
+									<Text style={styles.deleteButtonText}>Eliminar</Text>
+								</TouchableOpacity>
 							</View>
 						</View>
-
-						{/* Botones de Acción */}
-						<View style={styles.actionsContainer}>
-							<TouchableOpacity
-								style={styles.editButton}
-								onPress={() => handleEdit(pet.id)}
-							>
-								<Edit color="#6b4226" size={18} />
-								<Text style={styles.editButtonText}>Editar</Text>
-							</TouchableOpacity>
-
-							<TouchableOpacity
-								style={styles.deleteButton}
-								onPress={() => handleDelete(pet.id)}
-							>
-								<Trash2 color="#ffffff" size={18} />
-								<Text style={styles.deleteButtonText}>Eliminar</Text>
-							</TouchableOpacity>
-						</View>
-					</View>
-				))}
-			</ScrollView>
+					))}
+				</ScrollView>
+			)}
 		</SafeAreaView>
 	);
 }
@@ -170,6 +204,25 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: "#ffffff",
+	},
+	loadingContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	emptyContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	loadingText: {
+		marginTop: 16,
+		fontSize: 16,
+		color: "#6b4226",
+	},
+	emptyText: {
+		fontSize: 16,
+		color: "#999999",
 	},
 	buttonContainer: {
 		paddingHorizontal: 16,
