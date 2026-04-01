@@ -20,6 +20,8 @@ import { Upload } from "lucide-react-native";
 import { DropdownSelect } from "@/components/DropdownSelect";
 import * as ImagePicker from "expo-image-picker";
 import { getPetTypes, createPet } from "@/src/petsService";
+import { uploadPetProfilePicture } from "@/src/petPFP";
+import { supabase } from "@/lib/supabase";
 
 interface DropdownOption {
 	id: number;
@@ -130,10 +132,19 @@ export default function PetRegister() {
 
 		setLoading(true);
 		try {
+			// Obtener el usuario actual
+			const { data: { user }, error: authError } = await supabase.auth.getUser();
+			if (authError || !user?.id) {
+				throw new Error("No se pudo obtener la información del usuario");
+			}
+
+			const ownerId = user.id;
+
 			// Convertir generoId a boolean (1 = true/Macho, 2 = false/Hembra)
 			const genderBool = generoId === 1;
 
-			await createPet({
+			// Primero crear la mascota para obtener su ID
+			const petResult = await createPet({
 				name: nombre,
 				race: raza,
 				birthdate: fechaNacimiento.toISOString().split('T')[0],
@@ -143,8 +154,26 @@ export default function PetRegister() {
 				veterinarian_name: veterinarioNombre,
 				veterinarian_cellphone: veterinarioTelefono,
 				special_care_needs: cuidadosEspeciales || undefined,
-				profile_picture_url: foto?.uri || undefined,
 			});
+
+			// Si tenemos una foto, subirla después de crear la mascota
+			if (foto && petResult?.id) {
+				try {
+					const uploadResult = await uploadPetProfilePicture({
+						ownerId,
+						petId: petResult.id,
+						imageUri: foto.uri,
+						imageName: foto.name,
+						mimeType: foto.mimeType,
+					});
+
+					// Aquí podrías actualizar el registro de la mascota con la URL pública
+					console.log("Imagen subida:", uploadResult.publicUrl);
+				} catch (imageError: any) {
+					console.error("Error uploading image:", imageError);
+					// Continuar aunque falle la imagen, la mascota ya fue creada
+				}
+			}
 
 			Alert.alert("Éxito", "Mascota registrada correctamente");
 			router.replace("/pets" as any);

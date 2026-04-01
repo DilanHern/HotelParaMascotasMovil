@@ -8,6 +8,8 @@ import {
 	ScrollView,
 	Switch,
 	Alert,
+	Image,
+	Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -15,10 +17,19 @@ import { MobileHeader } from "@/components/MobileHeader";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Upload } from "lucide-react-native";
 import { DropdownSelect } from "@/components/DropdownSelect";
+import * as ImagePicker from "expo-image-picker";
+import { uploadPetProfilePicture } from "@/src/petPFP";
+import { supabase } from "@/lib/supabase";
 
 interface DropdownOption {
 	id: number;
 	name: string;
+}
+
+interface SelectedImage {
+	uri: string;
+	name: string;
+	mimeType?: string;
 }
 
 interface Pet {
@@ -115,7 +126,8 @@ export default function EditPet() {
 		tamañoOptions.find(o => o.name === petToEdit?.size)?.id || null
 	);
 	const [descripcion, setDescripcion] = useState("");
-	const [fotoUri, setFotoUri] = useState("");
+	const [foto, setFoto] = useState<SelectedImage | null>(null);
+	const [loading, setLoading] = useState(false);
 
 	// Estados para vacunas y condiciones médicas
 	const [tieneVacunas, setTieneVacunas] = useState(false);
@@ -137,7 +149,36 @@ export default function EditPet() {
 	const getGenero = () => generoOptions.find(o => o.id === generoId)?.name || "";
 	const getTamaño = () => tamañoOptions.find(o => o.id === tamañoId)?.name || "";
 
-	const handleActualizar = () => {
+	const pickImage = async () => {
+		try {
+			const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+			if (status !== "granted") {
+				Alert.alert("Permiso denegado", "Se requiere acceso a la galería para seleccionar imágenes");
+				return;
+			}
+
+			const result = await ImagePicker.launchImageLibraryAsync({
+				mediaTypes: ["images"],
+				allowsEditing: true,
+				aspect: [1, 1],
+				quality: 1,
+			});
+
+			if (!result.canceled && result.assets[0]) {
+				const asset = result.assets[0];
+				setFoto({
+					uri: asset.uri,
+					name: asset.fileName || `pet_${Date.now()}.jpg`,
+					mimeType: asset.mimeType,
+				});
+			}
+		} catch (error: any) {
+			console.error("Error picking image:", error);
+			Alert.alert("Error", "No se pudo seleccionar la imagen");
+		}
+	};
+
+	const handleActualizar = async () => {
 		// Validaciones básicas
 		if (!nombre || !fechaNacimiento || !tipoAnimalId || !generoId || !raza || !peso || !tamañoId) {
 			Alert.alert("Error", "Por favor completa todos los campos obligatorios");
@@ -150,28 +191,59 @@ export default function EditPet() {
 			return;
 		}
 
-		console.log({
-			id: petId,
-			nombre,
-			fechaNacimiento,
-			tipoAnimal: getTipoAnimal(),
-			genero: getGenero(),
-			raza,
-			peso,
-			tamaño: getTamaño(),
-			descripcion,
-			tieneVacunas,
-			tieneCondicionesMedicas,
-			veterinarioNombre,
-			veterinarioTelefono,
-			cuidadosEspeciales,
-		});
+		setLoading(true);
+		try {
+			// Obtener el usuario actual
+			const { data: { user }, error: authError } = await supabase.auth.getUser();
+			if (authError || !user?.id) {
+				throw new Error("No se pudo obtener la información del usuario");
+			}
 
-		Alert.alert("Éxito", `Mascota ${nombre} actualizada correctamente`);
+			// Si tenemos una foto nueva, subirla
+			if (foto) {
+				try {
+					const uploadResult = await uploadPetProfilePicture({
+						ownerId: user.id,
+						petId: petId.toString(),
+						imageUri: foto.uri,
+						imageName: foto.name,
+						mimeType: foto.mimeType,
+					});
+					console.log("Imagen subida:", uploadResult.publicUrl);
+				} catch (imageError: any) {
+					console.error("Error uploading image:", imageError);
+					// Continuar aunque falle la imagen
+				}
+			}
 
-		setTimeout(() => {
-			router.replace("/pets" as any);
-		}, 500);
+			console.log({
+				id: petId,
+				nombre,
+				fechaNacimiento,
+				tipoAnimal: getTipoAnimal(),
+				genero: getGenero(),
+				raza,
+				peso,
+				tamaño: getTamaño(),
+				descripcion,
+				tieneVacunas,
+				tieneCondicionesMedicas,
+				veterinarioNombre,
+				veterinarioTelefono,
+				cuidadosEspeciales,
+			});
+
+			Alert.alert("Éxito", `Mascota ${nombre} actualizada correctamente`);
+
+			setTimeout(() => {
+				router.replace("/pets" as any);
+			}, 500);
+		} catch (error: any) {
+			console.error("Error updating pet:", error);
+			Alert.alert("Error", error.message || "No se pudo actualizar la mascota");
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	if (!petToEdit) {
@@ -306,10 +378,16 @@ export default function EditPet() {
 					{/* Foto */}
 					<View style={styles.inputGroup}>
 						<Text style={styles.label}>Foto (opcional)</Text>
-						<TouchableOpacity style={styles.uploadButton}>
+						<TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
 							<Upload color="#6b4226" size={24} />
 							<Text style={styles.uploadButtonText}>Seleccionar imagen</Text>
 						</TouchableOpacity>
+						{foto && (
+							<View style={styles.imagePreviewContainer}>
+								<Image source={{ uri: foto.uri }} style={styles.imagePreview} />
+								<Text style={styles.imageName}>{foto.name}</Text>
+							</View>
+						)}
 					</View>
 
 					{/* Línea separadora */}
@@ -519,5 +597,20 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		color: "#d32f2f",
 		fontWeight: "600",
+	},
+	imagePreviewContainer: {
+		marginTop: 12,
+		alignItems: "center",
+	},
+	imagePreview: {
+		width: 150,
+		height: 150,
+		borderRadius: 8,
+		backgroundColor: "#e0e0e0",
+	},
+	imageName: {
+		fontSize: 12,
+		color: "#64748b",
+		marginTop: 8,
 	},
 });
