@@ -1,45 +1,100 @@
 import { Calendar, Tag, Trash2, X } from "lucide-react-native";
 import React, { useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Modal, StyleSheet, Text, TouchableOpacity, View, Alert } from "react-native";
 import Toast from "react-native-toast-message";
+import { deleteReservation } from "@/src/reservationsService";
 
 export type Reservation = {
   id: string;
-  petName: string;
-  roomName: string;
-  startDate: string;
-  endDate: string;
-  lodgingType: string;
-  status: "activa" | "cancelada" | "finalizada";
+  pet_name?: string;
+  room_name?: string;
+  check_in_date: string;
+  check_out_date: string;
+  lodging_type: string;
+  status: 0 | 1 | 2 | 3;
 };
 
-export default function ReservationCard({ reservation }: { reservation: Reservation }) {
+type Props = {
+  reservation: Reservation;
+  onDelete?: () => void;
+  onUpdate?: () => void;
+};
+
+const getStatusText = (status: number) => {
+  switch (status) {
+    case 0:
+      return "Pendiente";
+    case 1:
+      return "Confirmada";
+    case 2:
+      return "En curso";
+    case 3:
+      return "Completada";
+    default:
+      return "Desconocido";
+  }
+};
+
+const getStatusColor = (status: number) => {
+  switch (status) {
+    case 0:
+      return "#FF9800";
+    case 1:
+      return "#6b4226";
+    case 2:
+      return "#4CAF50";
+    case 3:
+      return "#999999";
+    default:
+      return "#999999";
+  }
+};
+
+export default function ReservationCard({ reservation, onDelete, onUpdate }: Props) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      await deleteReservation(reservation.id);
+      Toast.show({ type: "success", text1: "Reserva cancelada", position: "bottom" });
+      setShowConfirm(false);
+      onDelete?.();
+    } catch (error) {
+      console.error("Error deleting reservation:", error);
+      Toast.show({ type: "error", text1: "Error al cancelar la reserva", position: "bottom" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const canCancel = reservation.status === 0 || reservation.status === 1;
 
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.petName}>{reservation.petName}</Text>
-        <View style={[styles.statusPill, reservation.status === "activa" ? styles.statusActive : reservation.status === "cancelada" ? styles.statusCancelled : styles.statusFinished]}>
-          <Text style={styles.statusText}>{reservation.status}</Text>
+        <Text style={styles.petName}>{reservation.pet_name || "Mascota"}</Text>
+        <View style={[styles.statusPill, { backgroundColor: getStatusColor(reservation.status) }]}>
+          <Text style={styles.statusText}>{getStatusText(reservation.status)}</Text>
         </View>
       </View>
 
       <View style={styles.row}>
-        <Text style={[styles.value, styles.roomName]}>{reservation.roomName}</Text>
+        <Text style={[styles.value, styles.roomName]}>{reservation.room_name || "Habitación"}</Text>
       </View>
 
       <View style={styles.row}>
         <Calendar color="#6b4226" size={16} style={styles.icon} />
-        <Text style={styles.value}>{reservation.startDate} - {reservation.endDate}</Text>
+        <Text style={styles.value}>{reservation.check_in_date} - {reservation.check_out_date}</Text>
       </View>
 
       <View style={styles.row}>
         <Tag color="#6b4226" size={16} style={styles.icon} />
-        <Text style={styles.value}>{reservation.lodgingType}</Text>
+        <Text style={styles.value}>{reservation.lodging_type}</Text>
       </View>
 
-      {reservation.status === "activa" && (
+      {canCancel && (
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.cancelButton} activeOpacity={0.8} onPress={() => setShowConfirm(true)}>
             <Trash2 color="#fff" size={16} style={styles.trashIcon} />
@@ -51,7 +106,7 @@ export default function ReservationCard({ reservation }: { reservation: Reservat
       <Modal visible={showConfirm} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <TouchableOpacity style={styles.modalClose} onPress={() => setShowConfirm(false)} accessibilityLabel="close">
+            <TouchableOpacity style={styles.modalClose} onPress={() => setShowConfirm(false)} accessibilityLabel="close" disabled={deleting}>
               <X color="#6b4226" size={20} />
             </TouchableOpacity>
 
@@ -60,17 +115,15 @@ export default function ReservationCard({ reservation }: { reservation: Reservat
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalButtonPrimary}
+                style={[styles.modalButtonPrimary, deleting ? styles.buttonDisabled : null]}
                 activeOpacity={0.8}
-                onPress={() => {
-                  setShowConfirm(false);
-                  Toast.show({ type: "success", text1: "Reserva cancelada", position: 'bottom' });
-                }}
+                onPress={handleDelete}
+                disabled={deleting}
               >
-                <Text style={styles.modalButtonPrimaryText}>Si, cancelar</Text>
+                <Text style={styles.modalButtonPrimaryText}>{deleting ? "Cancelando..." : "Si, cancelar"}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.modalButtonSecondary} activeOpacity={0.8} onPress={() => setShowConfirm(false)}>
+              <TouchableOpacity style={styles.modalButtonSecondary} activeOpacity={0.8} onPress={() => setShowConfirm(false)} disabled={deleting}>
                 <Text style={styles.modalButtonSecondaryText}>No, mantener</Text>
               </TouchableOpacity>
             </View>
@@ -102,9 +155,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   petName: {
-		fontSize: 18,
-		fontWeight: "700",
-		color: "#6b4226",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#6b4226",
   },
   statusPill: {
     paddingHorizontal: 8,
@@ -120,9 +173,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textTransform: "capitalize",
   },
-  statusActive: { backgroundColor: "#6b4226" },
-  statusCancelled: { backgroundColor: "#6b4226" },
-  statusFinished: { backgroundColor: "#6b4226" },
   row: {
     flexDirection: "row",
     marginBottom: 6,
@@ -230,5 +280,8 @@ const styles = StyleSheet.create({
   modalButtonSecondaryText: {
     color: "#333",
     fontWeight: "700",
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });

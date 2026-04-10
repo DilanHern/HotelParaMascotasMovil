@@ -86,3 +86,81 @@ with check (owner_id = auth.uid());
 -- Permisos SQL para que PostgREST pueda hacer SELECT/UPDATE bajo RLS.
 grant usage on schema public to authenticated;
 grant select, update on table public.pl_pets to authenticated;
+
+-- =========================================================
+-- Catalogo base de estados de reserva
+-- =========================================================
+
+insert into public.pl_reservationstatus (name)
+select 'Pendiente'
+where not exists (
+  select 1 from public.pl_reservationstatus where name = 'Pendiente'
+);
+
+insert into public.pl_reservationstatus (name)
+select 'Confirmada'
+where not exists (
+  select 1 from public.pl_reservationstatus where name = 'Confirmada'
+);
+
+insert into public.pl_reservationstatus (name)
+select 'En curso'
+where not exists (
+  select 1 from public.pl_reservationstatus where name = 'En curso'
+);
+
+insert into public.pl_reservationstatus (name)
+select 'Completada'
+where not exists (
+  select 1 from public.pl_reservationstatus where name = 'Completada'
+);
+
+-- =========================================================
+-- Catalogo base de tipos de hospedaje
+-- =========================================================
+
+insert into public.pl_lodgingtypes (type)
+select 'Estandar'
+where not exists (
+  select 1 from public.pl_lodgingtypes where lower(type) = 'estandar'
+);
+
+insert into public.pl_lodgingtypes (type)
+select 'Especial'
+where not exists (
+  select 1 from public.pl_lodgingtypes where lower(type) = 'especial'
+);
+
+-- =========================================================
+-- Catalogo base de servicios (para hospedaje especial)
+-- =========================================================
+
+insert into public.pl_services (name)
+select 'Bano'
+where not exists (
+  select 1 from public.pl_services where lower(name) = 'bano'
+);
+
+insert into public.pl_services (name)
+select 'Paseo'
+where not exists (
+  select 1 from public.pl_services where lower(name) = 'paseo'
+);
+
+insert into public.pl_services (name)
+select 'Comida especial'
+where not exists (
+  select 1 from public.pl_services where lower(name) = 'comida especial'
+);
+
+insert into public.pl_services (name)
+select 'Juegos'
+where not exists (
+  select 1 from public.pl_services where lower(name) = 'juegos'
+);
+
+insert into public.pl_services (name)
+select 'Cuidado veterinario'
+where not exists (
+  select 1 from public.pl_services where lower(name) = 'cuidado veterinario'
+);

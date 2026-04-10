@@ -1,5 +1,5 @@
 import { Calendar, Check, ChevronDown, ChevronUp, X } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   ScrollView,
@@ -7,26 +7,21 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 import Toast from "react-native-toast-message";
+import { getUserPets, getAvailableRooms, createReservation, getSpecialServices } from "@/src/reservationsService";
+import { DatePickerField } from "./DatePickerField";
 
 type Props = {
   visible: boolean;
   onClose: () => void;
 };
 
-const mockPets = ["Luna", "Max", "Milo"];
-
-const allRooms = [
-  { id: "r1", name: "Suite Premium" },
-  { id: "r2", name: "Habitación Estándar" },
-  { id: "r3", name: "Suite Junior" },
-  { id: "r4", name: "Habitación Deluxe" },
-];
-
 export default function NewReservationModal({ visible, onClose }: Props) {
-  const [pet, setPet] = useState<string | null>(null);
+  const [pets, setPets] = useState<any[]>([]);
+  const [petId, setPetId] = useState<string | null>(null);
+  const [petName, setPetName] = useState<string | null>(null);
   const [showPetList, setShowPetList] = useState(false);
   const [showRoomList, setShowRoomList] = useState(false);
 
@@ -34,52 +29,131 @@ export default function NewReservationModal({ visible, onClose }: Props) {
 
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
 
-  // normalize date to local year/month/day (midnight) to avoid timezone/DST issues
   const dateOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
   const today = dateOnly(new Date());
 
-  const [roomsAvailable, setRoomsAvailable] = useState<typeof allRooms>([]);
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [roomsAvailable, setRoomsAvailable] = useState<any[]>([]);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [selectedRoomName, setSelectedRoomName] = useState<string | null>(null);
 
   const [services, setServices] = useState<string[]>([]);
+  const [availableServices, setAvailableServices] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [savingReservation, setSavingReservation] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      loadPets();
+      loadServices();
+    }
+  }, [visible]);
+
+  const loadPets = async () => {
+    try {
+      setLoading(true);
+      const userPets = await getUserPets();
+      setPets(userPets);
+    } catch (error) {
+      console.error("Error loading pets:", error);
+      Toast.show({ type: "error", text1: "Error al cargar mascotas", position: "bottom" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleService = (s: string) => {
     setServices((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   };
 
-  const verifyAvailability = () => {
-    if (!startDate || !endDate) return;
-    // mock availability: filter by lodgingType for variety
-    const available = allRooms.filter((r, i) => (lodgingType === "Especial" ? i % 2 === 0 : true));
-    setRoomsAvailable(available);
+  const loadServices = async () => {
+    try {
+      const data = await getSpecialServices();
+      setAvailableServices(data);
+    } catch (error) {
+      console.error("Error loading services:", error);
+      setAvailableServices([]);
+    }
   };
 
-  const onSelectStart = (date: Date) => {
-    const sel = dateOnly(date);
-    if (sel < today) {
-      setShowStartPicker(false);
+  const verifyAvailability = async () => {
+    if (!lodgingType) {
+      Toast.show({ type: "error", text1: "Selecciona tipo de hospedaje", position: "bottom" });
       return;
     }
-    setStartDate(sel);
-    setShowStartPicker(false);
-    // reset end date when start changes
-    setEndDate(null);
-    setRoomsAvailable([]);
-    setSelectedRoom(null);
-    setShowRoomList(false);
+    if (!startDate || !endDate) return;
+    try {
+      setLoading(true);
+      const available = await getAvailableRooms(
+        startDate.toISOString().split("T")[0],
+        endDate.toISOString().split("T")[0],
+        lodgingType!
+      );
+      setRoomsAvailable(available);
+      if (!available || available.length === 0) {
+        Toast.show({ type: "info", text1: "No hay habitaciones disponibles en esas fechas", position: "bottom" });
+        setShowRoomList(false);
+      } else {
+        // abre el dropdown para que el usuario vea opciones de inmediato
+        setShowRoomList(true);
+      }
+    } catch (error) {
+      console.error("Error verifying availability:", error);
+      const msg = String((error as any)?.message ?? error ?? "");
+      if (msg.toLowerCase().includes("get_available_rooms")) {
+        Toast.show({
+          type: "error",
+          text1: "Falta configurar la función de disponibilidad en Supabase",
+          text2: "Ejecuta DataBase/permisosnecesarios.sql y vuelve a intentar.",
+          position: "bottom",
+        });
+      }
+      Toast.show({ type: "error", text1: "Error al verificar disponibilidad", position: "bottom" });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const onSelectEnd = (date: Date) => {
-    const sel = dateOnly(date);
-    setEndDate(sel);
-    setShowEndPicker(false);
-    setRoomsAvailable([]);
-    setSelectedRoom(null);
-    setShowRoomList(false);
+  const handleCreateReservation = async () => {
+    if (!petId) {
+      Toast.show({ type: "error", text1: "Selecciona una mascota", position: "bottom" });
+      return;
+    }
+    if (!lodgingType) {
+      Toast.show({ type: "error", text1: "Selecciona tipo de hospedaje", position: "bottom" });
+      return;
+    }
+    if (!startDate || !endDate) {
+      Toast.show({ type: "error", text1: "Selecciona fechas", position: "bottom" });
+      return;
+    }
+    if (!selectedRoomId) {
+      Toast.show({ type: "error", text1: "Selecciona habitación", position: "bottom" });
+      return;
+    }
+    if (lodgingType === "Especial" && services.length === 0) {
+      Toast.show({ type: "error", text1: "Selecciona servicios adicionales", position: "bottom" });
+      return;
+    }
+
+    try {
+      setSavingReservation(true);
+      await createReservation({
+        pet_id: petId,
+        room_id: selectedRoomId,
+        check_in_date: startDate.toISOString().split("T")[0],
+        check_out_date: endDate.toISOString().split("T")[0],
+        lodging_type: lodgingType,
+        special_services: lodgingType === "Especial" ? services : [],
+      });
+      Toast.show({ type: "success", text1: "Reserva creada exitosamente", position: "bottom" });
+      onClose();
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+      Toast.show({ type: "error", text1: "Error al crear reserva", position: "bottom" });
+    } finally {
+      setSavingReservation(false);
+    }
   };
 
   return (
@@ -93,24 +167,25 @@ export default function NewReservationModal({ visible, onClose }: Props) {
           <Text style={styles.modalTitle}>Nueva Reserva</Text>
           <Text style={styles.modalSubtitle}>Completa los detalles de la reserva</Text>
 
-          <ScrollView contentContainerStyle={styles.form} showsVerticalScrollIndicator={false}>
+          <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false} contentContainerStyle={styles.form}>
             <Text style={styles.fieldLabel}>Mascota *</Text>
             <TouchableOpacity style={[styles.dropdown, styles.fieldRow]} onPress={() => setShowPetList((s) => !s)}>
-              <Text>{pet ?? "Selecciona una mascota"}</Text>
+              <Text>{petName ?? "Cargando mascotas..."}</Text>
               {showPetList ? <ChevronUp color="#6b4226" size={18} /> : <ChevronDown color="#6b4226" size={18} />}
             </TouchableOpacity>
             {showPetList && (
               <View style={styles.optionsList}>
-                {mockPets.map((p) => (
+                {pets.map((p) => (
                   <TouchableOpacity
-                    key={p}
+                    key={p.id}
                     style={styles.optionItem}
                     onPress={() => {
-                      setPet(p);
+                      setPetId(p.id);
+                      setPetName(p.name);
                       setShowPetList(false);
                     }}
                   >
-                    <Text>{p}</Text>
+                    <Text>{p.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -120,7 +195,10 @@ export default function NewReservationModal({ visible, onClose }: Props) {
             <View style={styles.rowButtons}>
               <TouchableOpacity
                 style={[styles.typeButton, lodgingType === "Estándar" ? styles.typeButtonActive : null]}
-                onPress={() => setLodgingType("Estándar")}
+                onPress={() => {
+                  setLodgingType("Estándar");
+                  setServices([]);
+                }}
               >
                 <Text style={lodgingType === "Estándar" ? styles.typeButtonTextActive : undefined}>Estándar</Text>
               </TouchableOpacity>
@@ -132,53 +210,61 @@ export default function NewReservationModal({ visible, onClose }: Props) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.fieldLabel}>Fecha de entrada *</Text>
-            <TouchableOpacity
-              style={[styles.dateField, styles.fieldRow]}
-              onPress={() => setShowStartPicker(true)}
-            >
-              <Text>{startDate ? startDate.toLocaleDateString() : "Selecciona fecha de entrada"}</Text>
-              <Calendar color="#6b4226" size={18} />
-            </TouchableOpacity>
-            <DateTimePickerModal
-              isVisible={showStartPicker}
-              mode="date"
-              date={startDate ?? today}
-              minimumDate={today}
-              onConfirm={onSelectStart}
-              onCancel={() => setShowStartPicker(false)}
-            />
-
-            <Text style={styles.fieldLabel}>Fecha de salida *</Text>
-            <TouchableOpacity
-              style={[styles.dateField, !startDate ? styles.fieldDisabled : null, styles.fieldRow]}
-              onPress={() => startDate && setShowEndPicker(true)}
-            >
-              <Text>{endDate ? endDate.toLocaleDateString() : "Selecciona fecha de salida"}</Text>
-              <Calendar color="#6b4226" size={18} />
-            </TouchableOpacity>
-            <DateTimePickerModal
-              isVisible={showEndPicker}
-              mode="date"
-              date={endDate ?? (startDate ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1) : today)}
-              minimumDate={startDate ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1) : undefined}
-              onConfirm={(d: Date) => {
-                const sel = dateOnly(d);
-                if (startDate && sel <= startDate) {
-                  setShowEndPicker(false);
+            <DatePickerField
+              label="Fecha de entrada *"
+              value={startDate}
+              onChange={(date: Date) => {
+                if (date < today) {
+                  Toast.show({
+                    type: "error",
+                    text1: "La fecha no puede ser anterior a hoy",
+                    position: "bottom",
+                  });
                   return;
                 }
-                onSelectEnd(sel);
+                setStartDate(date);
+                setEndDate(null);
+                setRoomsAvailable([]);
+                setSelectedRoomId(null);
+                setSelectedRoomName(null);
               }}
-              onCancel={() => setShowEndPicker(false)}
+              minimumDate={today}
+              maximumDate={new Date(2099, 11, 31)}
+            />
+
+            <DatePickerField
+              label="Fecha de salida *"
+              value={endDate}
+              onChange={(date: Date) => {
+                if (startDate && date <= startDate) {
+                  Toast.show({
+                    type: "error",
+                    text1: "La fecha de salida debe ser posterior a la de entrada",
+                    position: "bottom",
+                  });
+                  return;
+                }
+                setEndDate(date);
+                setRoomsAvailable([]);
+                setSelectedRoomId(null);
+                setSelectedRoomName(null);
+              }}
+              minimumDate={
+                startDate
+                  ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1)
+                  : today
+              }
+              maximumDate={new Date(2099, 11, 31)}
+              disabled={!startDate}
             />
 
             <TouchableOpacity
-              style={[styles.verifyButton, !(startDate && endDate) ? styles.buttonDisabled : null]}
+              style={[styles.verifyButton, !(startDate && endDate && lodgingType) ? styles.buttonDisabled : null]}
               activeOpacity={0.8}
               onPress={() => {
                 verifyAvailability();
               }}
+              disabled={!(startDate && endDate && lodgingType)}
             >
               <Text style={styles.verifyButtonText}>Verificar disponibilidad</Text>
             </TouchableOpacity>
@@ -188,7 +274,7 @@ export default function NewReservationModal({ visible, onClose }: Props) {
               style={[styles.dropdown, roomsAvailable.length === 0 ? styles.fieldDisabled : null, styles.fieldRow]}
               onPress={() => roomsAvailable.length > 0 && setShowRoomList((s) => !s)}
             >
-              <Text>{selectedRoom ?? (roomsAvailable.length === 0 ? "Verifica primero la disponibilidad" : "Selecciona habitación")}</Text>
+              <Text>{selectedRoomName ?? (roomsAvailable.length === 0 ? "Verifica primero la disponibilidad" : "Selecciona habitación")}</Text>
               {showRoomList ? <ChevronUp color="#6b4226" size={18} /> : <ChevronDown color="#6b4226" size={18} />}
             </TouchableOpacity>
             {roomsAvailable.length > 0 && showRoomList && (
@@ -198,7 +284,8 @@ export default function NewReservationModal({ visible, onClose }: Props) {
                     key={r.id}
                     style={styles.optionItem}
                     onPress={() => {
-                      setSelectedRoom(r.name);
+                      setSelectedRoomId(r.id);
+                      setSelectedRoomName(r.name);
                       setShowRoomList(false);
                     }}
                   >
@@ -212,13 +299,13 @@ export default function NewReservationModal({ visible, onClose }: Props) {
               <>
                 <Text style={styles.fieldLabel}>Servicios adicionales * (requerido para el hospedaje especial)</Text>
                 <View style={styles.servicesList}>
-                  {[
-                    "Baño",
+                  {(availableServices.length ? availableServices : [
+                    "Bano",
                     "Paseo",
                     "Comida especial",
                     "Juegos",
                     "Cuidado veterinario",
-                  ].map((s) => (
+                  ]).map((s) => (
                     <TouchableOpacity key={s} style={styles.serviceItem} onPress={() => toggleService(s)}>
                       <View style={[styles.checkbox, services.includes(s) ? styles.checkboxChecked : null]}>
                         {services.includes(s) && <Check color="#fff" size={14} />}
@@ -232,17 +319,19 @@ export default function NewReservationModal({ visible, onClose }: Props) {
 
             <View style={styles.footerButtons}>
               <TouchableOpacity
-                style={styles.createButton}
+                style={[styles.createButton, savingReservation ? styles.buttonDisabled : null]}
                 activeOpacity={0.8}
-                onPress={() => {
-                  Toast.show({ type: "success", text1: "Reserva creada exitosamente", position: 'bottom' });
-                  onClose();
-                }}
+                onPress={handleCreateReservation}
+                disabled={savingReservation}
               >
-                <Text style={styles.createButtonText}>Crear reserva</Text>
+                {savingReservation ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.createButtonText}>Crear reserva</Text>
+                )}
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.cancelButton} activeOpacity={0.8} onPress={onClose}>
+              <TouchableOpacity style={styles.cancelButton} activeOpacity={0.8} onPress={onClose} disabled={savingReservation}>
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </TouchableOpacity>
             </View>
@@ -289,9 +378,11 @@ const styles = StyleSheet.create({
     color: "#a07c66",
     textAlign: "center",
     marginTop: 8,
+    marginBottom: 12,
   },
   form: {
     paddingVertical: 12,
+    paddingBottom: 20,
   },
   fieldRow: {
     flexDirection: "row",
@@ -317,6 +408,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 8,
     overflow: "hidden",
+    maxHeight: 150,
   },
   optionItem: {
     padding: 10,
