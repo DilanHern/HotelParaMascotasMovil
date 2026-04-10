@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { eventEmitter } from "./Notification/eventEmitter";
+import { INotificationEvent } from "./Notification/types";
 
 interface RegisterData {
   nombre: string;
@@ -41,6 +43,30 @@ export async function registerUser(formData: RegisterData) {
   });
 
   if (error) throw error;
+
+  // ========================
+  // EMITIR EVENTO DE NOTIFICACIÓN
+  // ========================
+  if (data.user) {
+    try {
+      const notificationEvent: INotificationEvent = {
+        type: 'USER_REGISTERED',
+        user_id: data.user.id,
+        data: {
+          email: email,
+          firstname: firstname,
+          lastname: lastname,
+        },
+      };
+
+      await eventEmitter.emit(notificationEvent);
+      console.log('[authService] Evento USER_REGISTERED emitido');
+    } catch (notificationError) {
+      console.error('[authService] Error emitiendo notificación:', notificationError);
+      // No fallar el registro por error en notificación
+    }
+  }
+
   return data;
 }
 
