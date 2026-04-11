@@ -95,17 +95,17 @@ export const DropdownSelect: React.FC<DropdownSelectProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    marginBottom: 0,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
     color: "#333",
     marginBottom: 8,
   },
   selectButton: {
     width: "100%",
-    backgroundColor: "#fff8e7",
+    backgroundColor: "#fff",
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderRadius: 8,
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: "#ddd",
   },
   selectButtonText: {
     fontSize: 14,

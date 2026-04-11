@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
@@ -40,6 +41,10 @@ export default function Login() {
       <MobileHeader title="Iniciar Sesión" />
 
       <View style={styles.content}>
+        <Image
+          source={require("@/assets/images/Logo.png")}
+          style={styles.logo}
+        />
         <Text style={styles.title}>PetLodge</Text>
         <Text style={styles.subtitle}>Bienvenido</Text>
 
@@ -97,6 +102,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+    resizeMode: "contain",
   },
   title: {
     fontSize: 32,

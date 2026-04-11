@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
@@ -97,10 +98,16 @@ export default function Register() {
 
   return (
     <View style={styles.container}>
-      <MobileHeader title="Registrarse" showBack={true} backPath="/Login" />
+      <MobileHeader title="Registrarse" showBack={true} backPath="/auth/Login" />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>PetLodge</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>PetLodge</Text>
+          <Image
+            source={require("@/assets/images/Logo.png")}
+            style={styles.logo}
+          />
+        </View>
         <Text style={styles.subtitle}>Crear Cuenta</Text>
 
         <View style={styles.inputGroup}>
@@ -306,6 +313,19 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingVertical: 20,
+  },
+  titleContainer: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  logo: {
+    position: "absolute",
+    right: 0,
+    width: 40,
+    height: 40,
+    resizeMode: "contain",
   },
   title: {
     fontSize: 32,
