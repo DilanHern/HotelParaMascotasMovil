@@ -6,9 +6,26 @@ function toIsoTimestamp(dateOnly: string, time: "start" | "end" = "start") {
   // dateOnly expected: YYYY-MM-DD
   // pl_reservations.check_in/check_out are timestamp (without timezone).
   // Avoid timezone drift by sending local-like timestamps without Z.
-  return time === "start"
-    ? `${dateOnly}T00:00:00`
-    : `${dateOnly}T23:59:59`;
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+
+  // If the requested start date is today, use the current local time
+  // so the timestamp isn't earlier than now (which would violate check_in_not_past).
+  const today = new Date();
+  const todayYmd = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+  if (time === "start") {
+    if (dateOnly === todayYmd) {
+      // Add small buffer (2 minutes) to current time to ensure timestamp is safely in the future
+      const now = new Date(Date.now() + 2 * 60 * 1000);
+      const h = pad(now.getHours());
+      const m = pad(now.getMinutes());
+      const s = pad(now.getSeconds());
+      return `${dateOnly}T${h}:${m}:${s}`;
+    }
+    return `${dateOnly}T00:00:00`;
+  }
+
+  return `${dateOnly}T23:59:59`;
 }
 
 function toDateOnly(value: string | Date | null | undefined) {

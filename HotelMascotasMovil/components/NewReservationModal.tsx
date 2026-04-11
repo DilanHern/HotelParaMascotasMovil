@@ -1,17 +1,17 @@
+import { createReservation, getAvailableRooms, getSpecialServices, getUserPets } from "@/src/reservationsService";
 import { Calendar, Check, ChevronDown, ChevronUp, X } from "lucide-react-native";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  ActivityIndicator,
 } from "react-native";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import Toast from "react-native-toast-message";
-import { getUserPets, getAvailableRooms, createReservation, getSpecialServices } from "@/src/reservationsService";
-import { DatePickerField } from "./DatePickerField";
 
 type Props = {
   visible: boolean;
@@ -41,6 +41,9 @@ export default function NewReservationModal({ visible, onClose }: Props) {
   const [availableServices, setAvailableServices] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingReservation, setSavingReservation] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerTarget, setDatePickerTarget] = useState<"start" | "end" | null>(null);
+  const [tempDate, setTempDate] = useState<Date>(new Date());
 
   useEffect(() => {
     if (visible) {
@@ -114,6 +117,8 @@ export default function NewReservationModal({ visible, onClose }: Props) {
     }
   };
 
+  const formatDate = (date: Date) => date.toLocaleDateString("es-ES");
+
   const handleCreateReservation = async () => {
     if (!petId) {
       Toast.show({ type: "error", text1: "Selecciona una mascota", position: "bottom" });
@@ -170,7 +175,7 @@ export default function NewReservationModal({ visible, onClose }: Props) {
           <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false} contentContainerStyle={styles.form}>
             <Text style={styles.fieldLabel}>Mascota *</Text>
             <TouchableOpacity style={[styles.dropdown, styles.fieldRow]} onPress={() => setShowPetList((s) => !s)}>
-              <Text>{petName ?? "Cargando mascotas..."}</Text>
+              <Text>{petName ?? "Selecciona una mascota"}</Text>
               {showPetList ? <ChevronUp color="#6b4226" size={18} /> : <ChevronDown color="#6b4226" size={18} />}
             </TouchableOpacity>
             {showPetList && (
@@ -210,52 +215,79 @@ export default function NewReservationModal({ visible, onClose }: Props) {
               </TouchableOpacity>
             </View>
 
-            <DatePickerField
-              label="Fecha de entrada *"
-              value={startDate}
-              onChange={(date: Date) => {
-                if (date < today) {
-                  Toast.show({
-                    type: "error",
-                    text1: "La fecha no puede ser anterior a hoy",
-                    position: "bottom",
-                  });
-                  return;
-                }
-                setStartDate(date);
-                setEndDate(null);
-                setRoomsAvailable([]);
-                setSelectedRoomId(null);
-                setSelectedRoomName(null);
+            <Text style={styles.fieldLabel}>Fecha de entrada *</Text>
+            <TouchableOpacity
+              style={[styles.dateField, styles.fieldRow]}
+              onPress={() => {
+                const initial = startDate || today;
+                setTempDate(initial);
+                setDatePickerTarget("start");
+                setShowDatePicker(true);
               }}
-              minimumDate={today}
-              maximumDate={new Date(2099, 11, 31)}
-            />
+            >
+              <Text style={styles.dateText}>{startDate ? formatDate(startDate) : "Selecciona una fecha"}</Text>
+              <Calendar color="#6b4226" size={18} />
+            </TouchableOpacity>
 
-            <DatePickerField
-              label="Fecha de salida *"
-              value={endDate}
-              onChange={(date: Date) => {
-                if (startDate && date <= startDate) {
-                  Toast.show({
-                    type: "error",
-                    text1: "La fecha de salida debe ser posterior a la de entrada",
-                    position: "bottom",
-                  });
-                  return;
+            <Text style={styles.fieldLabel}>Fecha de salida *</Text>
+            <TouchableOpacity
+              style={[styles.dateField, !startDate ? styles.fieldDisabled : null, styles.fieldRow]}
+              onPress={() => {
+                if (!startDate) return;
+                const initial = endDate || new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1);
+                setTempDate(initial);
+                setDatePickerTarget("end");
+                setShowDatePicker(true);
+              }}
+              disabled={!startDate}
+            >
+              <Text style={styles.dateText}>{endDate ? formatDate(endDate) : "Selecciona una fecha"}</Text>
+              <Calendar color="#6b4226" size={18} />
+            </TouchableOpacity>
+
+            <DateTimePickerModal
+              isVisible={showDatePicker}
+              mode="date"
+              date={tempDate}
+              onConfirm={(date: Date) => {
+                if (datePickerTarget === "start") {
+                  if (date < today) {
+                    Toast.show({ type: "error", text1: "La fecha no puede ser anterior a hoy", position: "bottom" });
+                    setShowDatePicker(false);
+                    return;
+                  }
+                  setStartDate(date);
+                  setEndDate(null);
+                  setRoomsAvailable([]);
+                  setSelectedRoomId(null);
+                  setSelectedRoomName(null);
+                } else if (datePickerTarget === "end") {
+                  if (startDate && date <= startDate) {
+                    Toast.show({ type: "error", text1: "La fecha de salida debe ser posterior a la de entrada", position: "bottom" });
+                    setShowDatePicker(false);
+                    return;
+                  }
+                  setEndDate(date);
+                  setRoomsAvailable([]);
+                  setSelectedRoomId(null);
+                  setSelectedRoomName(null);
                 }
-                setEndDate(date);
-                setRoomsAvailable([]);
-                setSelectedRoomId(null);
-                setSelectedRoomName(null);
+                setShowDatePicker(false);
+                setDatePickerTarget(null);
+              }}
+              onCancel={() => {
+                setShowDatePicker(false);
+                setDatePickerTarget(null);
               }}
               minimumDate={
-                startDate
+                datePickerTarget === "start"
+                  ? today
+                  : startDate
                   ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1)
                   : today
               }
               maximumDate={new Date(2099, 11, 31)}
-              disabled={!startDate}
+              locale="es-ES"
             />
 
             <TouchableOpacity
@@ -300,7 +332,7 @@ export default function NewReservationModal({ visible, onClose }: Props) {
                 <Text style={styles.fieldLabel}>Servicios adicionales * (requerido para el hospedaje especial)</Text>
                 <View style={styles.servicesList}>
                   {(availableServices.length ? availableServices : [
-                    "Bano",
+                    "Baño",
                     "Paseo",
                     "Comida especial",
                     "Juegos",
@@ -440,6 +472,9 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     padding: 10,
     borderRadius: 8,
+  },
+  dateText: {
+    flex: 1,
   },
   fieldDisabled: {
     opacity: 0.6,
