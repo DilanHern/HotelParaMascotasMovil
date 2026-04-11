@@ -39,7 +39,7 @@ class DatabaseNotificationService implements INotificationService {
         .from('pl_notificationtypes')
         .select('id')
         .eq('name', typeName)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error(
@@ -47,6 +47,13 @@ class DatabaseNotificationService implements INotificationService {
           error
         );
         throw error;
+      }
+
+      if (!data) {
+        console.warn(
+          `[DatabaseNotificationService] Tipo de notificación '${typeName}' no encontrado. Usando ID por defecto (1)`
+        );
+        return 1; // ID por defecto
       }
 
       return data.id;

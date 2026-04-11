@@ -88,7 +88,7 @@ export default function Register() {
       });
 
       // Mientras tanto redirigue aca, cambiar !!!!
-      router.push("/Reservations" as any);
+      router.push("/pets" as any);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Error inesperado");
     } finally {

@@ -401,6 +401,9 @@ FOR SELECT
 USING (true);
 
 GRANT SELECT ON pl_pettypes TO authenticated;
+GRANT SELECT, UPDATE ON pl_users TO authenticated;
+GRANT SELECT ON pl_pettypes TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON pl_pets TO authenticated;
 
 commit;
 

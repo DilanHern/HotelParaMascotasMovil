@@ -26,11 +26,7 @@ export function MobileHeader({
 	const router = useRouter();
 
 	const handleBack = () => {
-		if (backPath) {
-			router.push(backPath as any);
-		} else {
-			router.back();
-		}
+		router.back();
 	};
 
 	const handleLogout = () => {

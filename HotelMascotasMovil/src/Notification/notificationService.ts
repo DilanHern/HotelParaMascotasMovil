@@ -24,7 +24,12 @@ class NotificationService {
       };
 
       await databaseNotificationService.saveNotification(notification);
-      await emailService.sendNotification(email, notification.name, notification.description);
+
+      try {
+        await emailService.sendNotification(email, notification.name, notification.description);
+      } catch (emailError) {
+        console.warn(`[NotificationService] ⚠️ Error al enviar email a ${email}, pero la notificación se guardó en BD:`, emailError);
+      }
 
       console.log(`[NotificationService] ✓ USER_REGISTERED enviada a ${email}`);
     } catch (error) {
@@ -65,7 +70,12 @@ class NotificationService {
       };
 
       await databaseNotificationService.saveNotification(notification);
-      await emailService.sendNotification(email, notification.name, notification.description);
+
+      try {
+        await emailService.sendNotification(email, notification.name, notification.description);
+      } catch (emailError) {
+        console.warn(`[NotificationService] ⚠️ Error al enviar email a ${email}, pero la notificación se guardó en BD:`, emailError);
+      }
 
       console.log(`[NotificationService] ✓ RESERVATION_CREATED enviada a ${email}`);
     } catch (error) {
@@ -107,7 +117,12 @@ class NotificationService {
       };
 
       await databaseNotificationService.saveNotification(notification);
-      await emailService.sendNotification(email, notification.name, notification.description);
+
+      try {
+        await emailService.sendNotification(email, notification.name, notification.description);
+      } catch (emailError) {
+        console.warn(`[NotificationService] ⚠️ Error al enviar email a ${email}, pero la notificación se guardó en BD:`, emailError);
+      }
 
       console.log(`[NotificationService] ✓ RESERVATION_MODIFIED enviada a ${email}`);
     } catch (error) {
@@ -142,7 +157,12 @@ class NotificationService {
       };
 
       await databaseNotificationService.saveNotification(notification);
-      await emailService.sendNotification(email, notification.name, notification.description);
+
+      try {
+        await emailService.sendNotification(email, notification.name, notification.description);
+      } catch (emailError) {
+        console.warn(`[NotificationService] ⚠️ Error al enviar email a ${email}, pero la notificación se guardó en BD:`, emailError);
+      }
 
       console.log(`[NotificationService] ✓ LODGING_STARTED enviada a ${email}`);
     } catch (error) {
@@ -177,7 +197,12 @@ class NotificationService {
       };
 
       await databaseNotificationService.saveNotification(notification);
-      await emailService.sendNotification(email, notification.name, notification.description);
+
+      try {
+        await emailService.sendNotification(email, notification.name, notification.description);
+      } catch (emailError) {
+        console.warn(`[NotificationService] ⚠️ Error al enviar email a ${email}, pero la notificación se guardó en BD:`, emailError);
+      }
 
       console.log(`[NotificationService] ✓ LODGING_ENDED enviada a ${email}`);
     } catch (error) {
@@ -208,7 +233,12 @@ class NotificationService {
       };
 
       await databaseNotificationService.saveNotification(notification);
-      await emailService.sendNotification(email, notification.name, notification.description);
+
+      try {
+        await emailService.sendNotification(email, notification.name, notification.description);
+      } catch (emailError) {
+        console.warn(`[NotificationService] ⚠️ Error al enviar email a ${email}, pero la notificación se guardó en BD:`, emailError);
+      }
 
       console.log(`[NotificationService] ✓ PET_STATUS_UPDATE enviada a ${email}`);
     } catch (error) {
@@ -246,7 +276,12 @@ class NotificationService {
       };
 
       await databaseNotificationService.saveNotification(notification);
-      await emailService.sendNotification(email, notification.name, notification.description);
+
+      try {
+        await emailService.sendNotification(email, notification.name, notification.description);
+      } catch (emailError) {
+        console.warn(`[NotificationService] ⚠️ Error al enviar email a ${email}, pero la notificación se guardó en BD:`, emailError);
+      }
 
       console.log(`[NotificationService] ✓ RESERVATION_DELETED enviada a ${email}`);
     } catch (error) {
