@@ -18,7 +18,7 @@ class EmailService implements IEmailService {
     description: string
   ): Promise<void> {
     try {
-      const response = await fetch(`${this.emailApiUrl}/send-notification-email`, {
+      const response = await fetch(`${this.emailApiUrl}/email-sender`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

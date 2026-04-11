@@ -115,6 +115,12 @@ where not exists (
   select 1 from public.pl_reservationstatus where name = 'Completada'
 );
 
+insert into public.pl_reservationstatus (name)
+select 'Cancelada'
+where not exists (
+  select 1 from public.pl_reservationstatus where name = 'Cancelada'
+);
+
 -- =========================================================
 -- Catalogo base de tipos de hospedaje
 -- =========================================================

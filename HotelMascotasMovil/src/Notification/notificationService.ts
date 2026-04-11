@@ -54,20 +54,20 @@ class NotificationService {
       const checkOutDate = new Date(reservationData.check_out).toLocaleDateString('es-ES');
 
       const notificationTypeId = await databaseNotificationService.getNotificationTypeId(
-        'Reservation-Confirmed'
+        'Reservation-Created'
       );
 
       const notification: INotification = {
         user_id: userId,
         notification_type_id: notificationTypeId,
-        name: 'Reserva Confirmada',
-        description: `¡Excelente! Tu reserva para ${petName} en ${roomName} ha sido confirmada. Entrada: ${checkInDate}, Salida: ${checkOutDate}. ¡Nos vemos pronto!`,
+        name: 'Reserva Creada',
+        description: `¡Excelente! Tu reserva para ${petName} en ${roomName} ha sido creada, pronto sera confirmada. Entrada: ${checkInDate}, Salida: ${checkOutDate}. ¡Nos vemos pronto!`,
       };
 
       await databaseNotificationService.saveNotification(notification);
       await emailService.sendNotification(email, notification.name, notification.description);
 
-      console.log(`[NotificationService] ✓ RESERVATION_CONFIRMED enviada a ${email}`);
+      console.log(`[NotificationService] ✓ RESERVATION_CREATED enviada a ${email}`);
     } catch (error) {
       console.error('[NotificationService] Error en handleReservationConfirmed:', error);
     }
@@ -213,6 +213,44 @@ class NotificationService {
       console.log(`[NotificationService] ✓ PET_STATUS_UPDATE enviada a ${email}`);
     } catch (error) {
       console.error('[NotificationService] Error en handlePetStatusUpdate:', error);
+    }
+  }
+
+  async handleReservationDeleted(
+    reservationId: string,
+    reservationData: any
+  ): Promise<void> {
+    try {
+      const userId = reservationData.user_id;
+      const email = await databaseNotificationService.getUserEmail(userId);
+
+      if (!email) {
+        console.warn(`[NotificationService] No se encontró email para usuario ${userId}`);
+        return;
+      }
+
+      const petDetails = await databaseNotificationService.getPetDetails(
+        reservationData.pet_id
+      );
+      const petName = petDetails?.name || 'Tu mascota';
+
+      const notificationTypeId = await databaseNotificationService.getNotificationTypeId(
+        'Reservation-Deleted'
+      );
+
+      const notification: INotification = {
+        user_id: userId,
+        notification_type_id: notificationTypeId,
+        name: 'Reserva Cancelada',
+        description: `Tu reserva para ${petName} ha sido cancelada. Si tienes dudas, contáctanos.`,
+      };
+
+      await databaseNotificationService.saveNotification(notification);
+      await emailService.sendNotification(email, notification.name, notification.description);
+
+      console.log(`[NotificationService] ✓ RESERVATION_DELETED enviada a ${email}`);
+    } catch (error) {
+      console.error('[NotificationService] Error en handleReservationDeleted:', error);
     }
   }
 }

@@ -11,7 +11,8 @@ export type Reservation = {
   check_in_date: string;
   check_out_date: string;
   lodging_type: string;
-  status: 0 | 1 | 2 | 3;
+  status: 0 | 1 | 2 | 3 | 4 | 5;
+  special_services?: string[];
 };
 
 type Props = {
@@ -22,14 +23,16 @@ type Props = {
 
 const getStatusText = (status: number) => {
   switch (status) {
-    case 0:
-      return "Pendiente";
     case 1:
-      return "Confirmada";
+      return "Pendiente";
     case 2:
-      return "En curso";
+      return "Confirmada";
     case 3:
+      return "En curso";
+    case 4:
       return "Completada";
+    case 5:
+      return "Cancelada";
     default:
       return "Desconocido";
   }
@@ -37,14 +40,16 @@ const getStatusText = (status: number) => {
 
 const getStatusColor = (status: number) => {
   switch (status) {
-    case 0:
-      return "#FF9800";
     case 1:
-      return "#6b4226";
+      return "#FF9800";
     case 2:
       return "#4CAF50";
     case 3:
-      return "#999999";
+      return "#2196F3";
+    case 4:
+      return "#9C27B0";
+    case 5:
+      return "#e53935";
     default:
       return "#999999";
   }
@@ -69,7 +74,7 @@ export default function ReservationCard({ reservation, onDelete, onUpdate }: Pro
     }
   };
 
-  const canCancel = reservation.status === 0 || reservation.status === 1;
+  const canCancel = reservation.status === 1 || reservation.status === 2;
 
   return (
     <View style={styles.card}>
@@ -93,6 +98,15 @@ export default function ReservationCard({ reservation, onDelete, onUpdate }: Pro
         <Tag color="#6b4226" size={16} style={styles.icon} />
         <Text style={styles.value}>{reservation.lodging_type}</Text>
       </View>
+
+      {reservation.lodging_type === "Especial" && reservation.special_services && reservation.special_services.length > 0 && (
+        <View style={styles.servicesContainer}>
+          <Text style={styles.servicesLabel}>Servicios extras:</Text>
+          {reservation.special_services.map((service, index) => (
+            <Text key={index} style={styles.serviceItem}>• {service}</Text>
+          ))}
+        </View>
+      )}
 
       {canCancel && (
         <View style={styles.actionsRow}>
@@ -193,6 +207,23 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: 6,
+  },
+  servicesContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+  },
+  servicesLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6b4226",
+    marginBottom: 4,
+  },
+  serviceItem: {
+    fontSize: 12,
+    color: "#999999",
+    marginBottom: 2,
   },
   actionsRow: {
     marginTop: 8,

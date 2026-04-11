@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { eventEmitter } from "./Notification/eventEmitter";
+import { INotificationEvent } from "./Notification/types";
 
 function toIsoTimestamp(dateOnly: string, time: "start" | "end" = "start") {
   // dateOnly expected: YYYY-MM-DD
@@ -97,7 +99,7 @@ export interface Reservation {
   check_in_date: string;
   check_out_date: string;
   lodging_type: "Estándar" | "Especial";
-  status: 0 | 1 | 2 | 3;
+  status: 1 | 2 | 3 | 4 | 5;
   special_services?: string[];
   created_at?: string;
   updated_at?: string;
@@ -118,7 +120,7 @@ export interface UpdateReservationData {
   check_in_date?: string;
   check_out_date?: string;
   lodging_type?: "Estándar" | "Especial";
-  status?: 0 | 1 | 2 | 3;
+  status?: 1 | 2 | 3 | 4 | 5;
   special_services?: string[];
 }
 
@@ -146,25 +148,60 @@ export async function getUserReservations(): Promise<Reservation[]> {
   try {
     const { data, error } = await supabase
       .from("pl_reservations")
-      .select("*")
+      .select(`
+        *,
+        pet:pl_pets(name),
+        room:pl_rooms(name),
+        lodging_type:pl_lodgingtypes(type),
+        status:pl_reservationstatus(name)
+      `)
       .order("check_in", { ascending: false });
 
     if (error) throw error;
 
-    return (data || []).map((res: any) => ({
-      id: res.id,
-      pet_id: res.pet_id,
-      pet_name: res.pet_name || "Mascota",
-      room_id: String(res.room_id),
-      room_name: res.room_name || "Habitación",
-      check_in_date: toDateOnly(res.check_in ?? res.check_in_date),
-      check_out_date: toDateOnly(res.check_out ?? res.check_out_date),
-      lodging_type: res.lodging_type || "Estándar",
-      status: res.status ?? 0,
-      special_services: res.special_services || [],
-      created_at: res.created_at,
-      updated_at: res.updated_at,
-    }));
+    // Obtener servicios para cada reserva si es tipo Especial
+    const reservationsWithServices = await Promise.all(
+      (data || []).map(async (res: any) => {
+        let special_services: string[] = [];
+
+        // Si es lodging_type_id 2 (Especial), obtener los servicios
+        if (res.lodging_type_id === 2) {
+          try {
+            const { data: services } = await supabase
+              .from("pl_reservationservices")
+              .select("service:pl_services(name)")
+              .eq("reservation_id", res.id);
+
+            special_services = (services || [])
+              .map((s: any) => s.service?.name)
+              .filter(Boolean);
+          } catch (err) {
+            console.error("Error fetching services for reservation:", res.id, err);
+          }
+        }
+
+        // Mapear status_id (1-5) directamente
+        const statusId = res.status_id || 1;
+        const lodgingTypeName = res.lodging_type?.type || (res.lodging_type_id === 2 ? "Especial" : "Estándar");
+
+        return {
+          id: res.id,
+          pet_id: res.pet_id,
+          pet_name: res.pet?.name || res.pet_name || "Mascota",
+          room_id: String(res.room_id),
+          room_name: res.room?.name || res.room_name || "Habitación",
+          check_in_date: toDateOnly(res.check_in ?? res.check_in_date),
+          check_out_date: toDateOnly(res.check_out ?? res.check_out_date),
+          lodging_type: lodgingTypeName,
+          status: statusId,
+          special_services: special_services,
+          created_at: res.created_at,
+          updated_at: res.updated_at,
+        };
+      })
+    );
+
+    return reservationsWithServices;
   } catch (error) {
     console.error("Error fetching reservations:", error);
     return [];
@@ -219,6 +256,31 @@ export async function createReservation(
     await linkReservationServices(data.id, reservationData.special_services);
   }
 
+  // ========================
+  // EMIT RESERVATION_CONFIRMED NOTIFICATION
+  // ========================
+  try {
+    const notificationEvent: INotificationEvent = {
+      type: 'RESERVATION_CONFIRMED',
+      user_id: user.id,
+      data: {
+        email: user.email,
+        reservation_id: data.id,
+        user_id: user.id,
+        pet_id: data.pet_id,
+        room_name: reservationData.room_id,
+        check_in: data.check_in ?? data.check_in_date,
+        check_out: data.check_out ?? data.check_out_date,
+      },
+    };
+
+    await eventEmitter.emit(notificationEvent);
+    console.log('[reservationsService] Evento RESERVATION_CONFIRMED emitido para reserva:', data.id);
+  } catch (notificationError) {
+    console.error('[reservationsService] Error emitiendo notificación RESERVATION_CONFIRMED:', notificationError);
+    // No fallar la creación de reserva por error en notificación
+  }
+
   return {
     id: data.id,
     pet_id: data.pet_id,
@@ -226,7 +288,7 @@ export async function createReservation(
     check_in_date: toDateOnly(data.check_in ?? data.check_in_date),
     check_out_date: toDateOnly(data.check_out ?? data.check_out_date),
     lodging_type: reservationData.lodging_type,
-    status: 0,
+    status: 1,
     special_services: reservationData.special_services || [],
   };
 }
@@ -236,20 +298,44 @@ export async function updateReservation(
   reservationId: string,
   updateData: UpdateReservationData
 ): Promise<Reservation> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("No user logged in");
+
+  // Fetch current reservation to detect changes
+  const { data: currentRes, error: fetchError } = await supabase
+    .from("pl_reservations")
+    .select()
+    .eq("id", reservationId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
   const updateBody: any = {};
+  let dateChanged = false;
+  let statusChanged = false;
+  let oldStatus: number | undefined;
+  let newStatus: number | undefined;
 
   if (updateData.pet_id !== undefined) updateBody.pet_id = updateData.pet_id;
   if (updateData.room_id !== undefined) updateBody.room_id = updateData.room_id;
-  if (updateData.check_in_date !== undefined)
+  if (updateData.check_in_date !== undefined) {
     updateBody.check_in = toIsoTimestamp(updateData.check_in_date, "start");
-  if (updateData.check_out_date !== undefined)
+    dateChanged = true;
+  }
+  if (updateData.check_out_date !== undefined) {
     updateBody.check_out = toIsoTimestamp(updateData.check_out_date, "end");
+    dateChanged = true;
+  }
   if (updateData.lodging_type !== undefined) {
     updateBody.lodging_type_id = await getLodgingTypeId(updateData.lodging_type);
   }
   if (updateData.status !== undefined) {
-    // UI uses 0-based status enum; DB status_id is typically 1-based.
-    updateBody.status_id = updateData.status + 1;
+    // Status ya viene como 1-5 de la BD
+    updateBody.status_id = updateData.status;
+    statusChanged = true;
+    oldStatus = currentRes.status_id;
+    newStatus = updateData.status;
   }
 
   const { data, error } = await supabase
@@ -261,6 +347,72 @@ export async function updateReservation(
 
   if (error) throw error;
 
+  // ========================
+  // EMIT NOTIFICATION EVENTS BASED ON CHANGES
+  // ========================
+  try {
+    // Emit RESERVATION_MODIFIED if dates changed
+    if (dateChanged) {
+      const notificationEvent: INotificationEvent = {
+        type: 'RESERVATION_MODIFIED',
+        user_id: user.id,
+        data: {
+          email: user.email,
+          reservation_id: reservationId,
+          user_id: user.id,
+          pet_id: data.pet_id,
+          room_name: data.room_id,
+          new_check_in: data.check_in ?? data.check_in_date,
+          new_check_out: data.check_out ?? data.check_out_date,
+        },
+      };
+
+      await eventEmitter.emit(notificationEvent);
+      console.log('[reservationsService] Evento RESERVATION_MODIFIED emitido para reserva:', reservationId);
+    }
+
+    // Emit LODGING_STARTED if status changed to 3 (En curso)
+    if (statusChanged && newStatus === 3) {
+      const notificationEvent: INotificationEvent = {
+        type: 'LODGING_STARTED',
+        user_id: user.id,
+        data: {
+          email: user.email,
+          reservation_id: reservationId,
+          user_id: user.id,
+          pet_id: data.pet_id,
+          room_name: data.room_id,
+          check_in: data.check_in ?? data.check_in_date,
+        },
+      };
+
+      await eventEmitter.emit(notificationEvent);
+      console.log('[reservationsService] Evento LODGING_STARTED emitido para reserva:', reservationId);
+    }
+
+    // Emit LODGING_ENDED if status changed to 4 (Completada)
+    if (statusChanged && newStatus === 4) {
+      const notificationEvent: INotificationEvent = {
+        type: 'LODGING_ENDED',
+        user_id: user.id,
+        data: {
+          email: user.email,
+          reservation_id: reservationId,
+          user_id: user.id,
+          pet_id: data.pet_id,
+          room_name: data.room_id,
+          check_out: data.check_out ?? data.check_out_date,
+        },
+      };
+
+      await eventEmitter.emit(notificationEvent);
+      console.log('[reservationsService] Evento LODGING_ENDED emitido para reserva:', reservationId);
+    }
+  } catch (notificationError) {
+    console.error('[reservationsService] Error emitiendo notificación:', notificationError);
+    // No fallar la actualización de reserva por error en notificación
+  }
+
   return {
     id: data.id,
     pet_id: data.pet_id,
@@ -268,19 +420,55 @@ export async function updateReservation(
     check_in_date: toDateOnly(data.check_in ?? data.check_in_date),
     check_out_date: toDateOnly(data.check_out ?? data.check_out_date),
     lodging_type: updateData.lodging_type ?? "Estándar",
-    status: typeof data.status_id === "number" ? Math.max(0, data.status_id - 1) : 0,
+    status: (data.status_id || 1) as 1 | 2 | 3 | 4 | 5,
     special_services: data.special_services || [],
   };
 }
 
 // Delete a reservation
 export async function deleteReservation(reservationId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("No user logged in");
+
+  // Fetch reservation details before deleting
+  const { data: reservation, error: fetchError } = await supabase
+    .from("pl_reservations")
+    .select()
+    .eq("id", reservationId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
   const { error } = await supabase
     .from("pl_reservations")
     .delete()
     .eq("id", reservationId);
 
   if (error) throw error;
+
+  // ========================
+  // EMIT RESERVATION_DELETED NOTIFICATION
+  // ========================
+  try {
+    const notificationEvent: INotificationEvent = {
+      type: 'RESERVATION_DELETED',
+      user_id: user.id,
+      data: {
+        email: user.email,
+        reservation_id: reservationId,
+        user_id: user.id,
+        pet_id: reservation.pet_id,
+        room_id: reservation.room_id,
+      },
+    };
+
+    await eventEmitter.emit(notificationEvent);
+    console.log('[reservationsService] Evento RESERVATION_DELETED emitido para reserva:', reservationId);
+  } catch (notificationError) {
+    console.error('[reservationsService] Error emitiendo notificación RESERVATION_DELETED:', notificationError);
+    // No fallar la eliminación de reserva por error en notificación
+  }
 }
 
 // Get available rooms - Mock implementation

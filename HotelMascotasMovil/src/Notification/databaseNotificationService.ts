@@ -9,7 +9,7 @@ class DatabaseNotificationService implements INotificationService {
   async saveNotification(notification: INotification): Promise<INotification> {
     try {
       const { data, error } = await supabase
-        .from('Pl_Notifications')
+        .from('pl_notifications')
         .insert({
           user_id: notification.user_id,
           notification_type_id: notification.notification_type_id,
@@ -36,7 +36,7 @@ class DatabaseNotificationService implements INotificationService {
   async getNotificationTypeId(typeName: string): Promise<number> {
     try {
       const { data, error } = await supabase
-        .from('Pl_NotificationTypes')
+        .from('pl_notificationtypes')
         .select('id')
         .eq('name', typeName)
         .single();
@@ -59,7 +59,7 @@ class DatabaseNotificationService implements INotificationService {
   async getUserEmail(userId: string): Promise<string | null> {
     try {
       const { data, error } = await supabase
-        .from('Pl_Users')
+        .from('pl_users')
         .select('email')
         .eq('id', userId)
         .single();
@@ -79,14 +79,14 @@ class DatabaseNotificationService implements INotificationService {
   async getReservationDetails(reservationId: string): Promise<any> {
     try {
       const { data, error } = await supabase
-        .from('Pl_Reservations')
+        .from('pl_reservations')
         .select(
           `
           *,
-          pet:Pl_Pets(name, owner_id),
-          room:Pl_Rooms(name),
-          status:Pl_ReservationStatus(name),
-          lodging_type:Pl_LodgingTypes(type)
+          pet:pl_pets(name, owner_id),
+          room:pl_rooms(name),
+          status:pl_reservationstatus(name),
+          lodging_type:pl_loggingtypes(type)
         `
         )
         .eq('id', reservationId)
@@ -107,8 +107,8 @@ class DatabaseNotificationService implements INotificationService {
   async getPetDetails(petId: string): Promise<any> {
     try {
       const { data, error } = await supabase
-        .from('Pl_Pets')
-        .select('*, pet_type:Pl_PetTypes(name), owner:Pl_Users(id, email, firstname)')
+        .from('pl_pets')
+        .select('*, pet_type:pl_pettypes(name), owner:pl_users(id, email, firstname)')
         .eq('id', petId)
         .single();
 
@@ -127,7 +127,7 @@ class DatabaseNotificationService implements INotificationService {
   async getNotificationsByUserId(userId: string, limit: number = 50): Promise<INotification[]> {
     try {
       const { data, error } = await supabase
-        .from('Pl_Notifications')
+        .from('pl_notifications')
         .select('*')
         .eq('user_id', userId)
         .order('date', { ascending: false })

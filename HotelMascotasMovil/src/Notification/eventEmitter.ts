@@ -11,7 +11,15 @@ class EventEmitter implements IEventEmitter {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, []);
     }
-    this.listeners.get(eventType)!.push(listener);
+
+    // Evitar registrar listeners duplicados
+    const eventListeners = this.listeners.get(eventType)!;
+    if (eventListeners.includes(listener)) {
+      console.log(`[Notification] Listener ya existe para evento: ${eventType}, ignorando duplicado`);
+      return;
+    }
+
+    eventListeners.push(listener);
     console.log(`[Notification] Listener registrado para evento: ${eventType}`);
   }
 

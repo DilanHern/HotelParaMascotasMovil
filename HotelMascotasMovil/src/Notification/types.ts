@@ -14,8 +14,10 @@ export interface INotification {
 export interface INotificationEvent {
   type:
     | 'USER_REGISTERED'
+    | 'RESERVATION_CREATED'
     | 'RESERVATION_CONFIRMED'
     | 'RESERVATION_MODIFIED'
+    | 'RESERVATION_DELETED'
     | 'LODGING_STARTED'
     | 'LODGING_ENDED'
     | 'PET_STATUS_UPDATE';

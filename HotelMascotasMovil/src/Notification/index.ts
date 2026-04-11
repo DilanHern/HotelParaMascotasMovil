@@ -39,6 +39,12 @@ export const lodgingEndedListener = async (event: INotificationEvent) => {
   }
 };
 
+export const reservationDeletedListener = async (event: INotificationEvent) => {
+  if (event.type === 'RESERVATION_DELETED') {
+    await notificationService.handleReservationDeleted(event.data.reservation_id, event.data);
+  }
+};
+
 export const petStatusUpdateListener = async (event: INotificationEvent) => {
   if (event.type === 'PET_STATUS_UPDATE') {
     await notificationService.handlePetStatusUpdate(event.user_id, event.data);
@@ -54,6 +60,7 @@ export function registerAllListeners(): void {
   eventEmitter.on('RESERVATION_MODIFIED', reservationModifiedListener);
   eventEmitter.on('LODGING_STARTED', lodgingStartedListener);
   eventEmitter.on('LODGING_ENDED', lodgingEndedListener);
+  eventEmitter.on('RESERVATION_DELETED', reservationDeletedListener);
   eventEmitter.on('PET_STATUS_UPDATE', petStatusUpdateListener);
 
   console.log('[Notification] ✓ Todos los listeners registrados');
@@ -68,6 +75,7 @@ export function unregisterAllListeners(): void {
   eventEmitter.off('RESERVATION_MODIFIED', reservationModifiedListener);
   eventEmitter.off('LODGING_STARTED', lodgingStartedListener);
   eventEmitter.off('LODGING_ENDED', lodgingEndedListener);
+  eventEmitter.off('RESERVATION_DELETED', reservationDeletedListener);
   eventEmitter.off('PET_STATUS_UPDATE', petStatusUpdateListener);
 
   console.log('[Notification] ✓ Todos los listeners desregistrados');
