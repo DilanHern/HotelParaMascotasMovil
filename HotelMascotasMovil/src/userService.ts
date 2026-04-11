@@ -7,7 +7,7 @@ interface UserProfile {
   email: string;
   cellphone: string;
   cedula: string;
-  gender: boolean;
+  gender: number; // 0 = Masculino, 1 = Femenino, 2 = Otro
   line1: string;
   line2: string;
   district_id: number;
@@ -18,7 +18,7 @@ interface UpdateUserData {
   lastname?: string;
   cedula?: string;
   cellphone?: string;
-  gender?: boolean;
+  gender?: number;
   line1?: string;
   line2?: string;
   district_id?: number;
@@ -76,4 +76,29 @@ export async function updateUserProfile(userData: UpdateUserData): Promise<UserP
   }
 
   return data[0];
+}
+
+// Obtener datos geograficos
+export async function getLocationByDistrictId(districtId: number) {
+  const { data, error } = await supabase
+    .from("pl_districts")
+    .select(`
+      id,
+      name,
+      canton_id,
+      pl_cantons (
+        id,
+        name,
+        province_id,
+        pl_provinces (
+          id,
+          name
+        )
+      )
+    `)
+    .eq("id", districtId)
+    .single();
+
+  if (error) throw error;
+  return data;
 }

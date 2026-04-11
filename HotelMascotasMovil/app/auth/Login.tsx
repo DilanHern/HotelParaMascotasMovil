@@ -1,16 +1,16 @@
-import React, { useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  Image,
-} from "react-native";
-import { useRouter } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
 import { loginUser } from "@/src/authService";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function Login() {
   const router = useRouter();
@@ -73,7 +73,9 @@ export default function Login() {
 
         <View style={styles.registerContainer}>
           <Text style={styles.registerText}>¿No tienes cuenta?</Text>
-          <TouchableOpacity onPress={() => router.push("/auth/Register" as any)}>
+          <TouchableOpacity
+            onPress={() => router.push("/auth/Register" as any)}
+          >
             <Text style={styles.registerLink}>Regístrate</Text>
           </TouchableOpacity>
         </View>
@@ -100,8 +102,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     paddingHorizontal: 20,
+    paddingTop: 30,
   },
   logo: {
     width: 120,

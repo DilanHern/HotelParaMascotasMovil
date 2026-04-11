@@ -61,6 +61,8 @@ export default function EditPet() {
 	const [veterinarioNombre, setVeterinarioNombre] = useState("");
 	const [veterinarioTelefono, setVeterinarioTelefono] = useState("");
 	const [cuidadosEspeciales, setCuidadosEspeciales] = useState("");
+	const [vacunas, setVacunas] = useState("");
+	const [condicionesMedicas, setCondicionesMedicas] = useState("");
 
 	useEffect(() => {
 		loadPetData();
@@ -91,6 +93,9 @@ export default function EditPet() {
 					setVeterinarioNombre(petData.veterinarian_name || "");
 					setVeterinarioTelefono(petData.veterinarian_cellphone || "");
 					setCuidadosEspeciales(petData.special_care_needs || "");
+					setCuidadosEspeciales(petData.special_care_needs || "");
+					setVacunas(petData.vaccines || "");                          
+					setCondicionesMedicas(petData.medical_conditions || "");     
 				}
 			}
 		} catch (error) {
@@ -185,6 +190,8 @@ export default function EditPet() {
 				veterinarian_name: veterinarioNombre || undefined,
 				veterinarian_cellphone: veterinarioTelefono || undefined,
 				special_care_needs: cuidadosEspeciales || undefined,
+				vaccines: vacunas || undefined,                         
+				medical_conditions: condicionesMedicas || undefined,
 			});
 
 			Alert.alert("Éxito", `Mascota ${nombre} actualizada correctamente`);
@@ -334,6 +341,51 @@ export default function EditPet() {
 							)}
 						</View>
 
+						{/* Cuidados especiales */}
+						<View style={styles.inputGroup}>
+							<Text style={styles.label}>Cuidados especiales (opcional)</Text>
+							<TextInput
+								style={[styles.input, styles.textArea]}
+								value={cuidadosEspeciales}
+								onChangeText={setCuidadosEspeciales}
+								placeholder="Comida especial, comportamiento, etc."
+								placeholderTextColor="#ccc"
+								multiline
+								numberOfLines={4}
+								editable={!loading}
+							/>
+						</View>
+
+						{/* Vacunas */}
+						<View style={styles.inputGroup}>
+						<Text style={styles.label}>Vacunas (opcional)</Text>
+						<TextInput
+							style={[styles.input, styles.textArea]}
+							value={vacunas}
+							onChangeText={setVacunas}
+							placeholder="Ej: Rabia, Parvovirus, etc."
+							placeholderTextColor="#ccc"
+							multiline
+							numberOfLines={3}
+							editable={!loading}
+						/>
+						</View>
+
+						{/* Condiciones médicas */}
+						<View style={styles.inputGroup}>
+						<Text style={styles.label}>Condiciones médicas (opcional)</Text>
+						<TextInput
+							style={[styles.input, styles.textArea]}
+							value={condicionesMedicas}
+							onChangeText={setCondicionesMedicas}
+							placeholder="Ej: Diabetes, alergias, etc."
+							placeholderTextColor="#ccc"
+							multiline
+							numberOfLines={3}
+							editable={!loading}
+						/>
+						</View>
+
 						{/* Línea separadora */}
 						<View style={styles.separator} />
 
@@ -371,21 +423,6 @@ export default function EditPet() {
 								placeholderTextColor="#ccc"
 								placeholder="12345678"
 								maxLength={8}
-								editable={!loading}
-							/>
-						</View>
-
-						{/* Cuidados especiales */}
-						<View style={styles.inputGroup}>
-							<Text style={styles.label}>Cuidados especiales (opcional)</Text>
-							<TextInput
-								style={[styles.input, styles.textArea]}
-								value={cuidadosEspeciales}
-								onChangeText={setCuidadosEspeciales}
-								placeholder="Comida especial, comportamiento, etc."
-								placeholderTextColor="#ccc"
-								multiline
-								numberOfLines={4}
 								editable={!loading}
 							/>
 						</View>

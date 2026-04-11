@@ -13,6 +13,8 @@ interface Pet {
   veterinarian_name?: string;
   veterinarian_cellphone?: string;
   special_care_needs?: string;
+  vaccines?: string;
+  medical_conditions?: string;
 }
 
 interface PetType {
@@ -31,6 +33,8 @@ interface CreatePetData {
   veterinarian_cellphone?: string;
   special_care_needs?: string;
   profile_picture_url?: string;
+  vaccines?: string;
+  medical_conditions?: string;
 }
 
 export async function getPetTypes(): Promise<PetType[]> {
@@ -100,6 +104,8 @@ export async function createPet(petData: CreatePetData): Promise<Pet> {
         veterinarian_cellphone: petData.veterinarian_cellphone,
         special_care_needs: petData.special_care_needs,
         profile_picture_url: petData.profile_picture_url,
+        vaccines: petData.vaccines,
+        medical_conditions: petData.medical_conditions,
       },
     ])
     .select()
@@ -138,6 +144,8 @@ export async function getPetById(petId: string): Promise<Pet | null> {
       veterinarian_name,
       veterinarian_cellphone,
       special_care_needs,
+      vaccines,
+      medical_conditions,
       pet_type:pet_type_id (
         name
       )
@@ -162,6 +170,8 @@ export async function getPetById(petId: string): Promise<Pet | null> {
     veterinarian_name: data.veterinarian_name,
     veterinarian_cellphone: data.veterinarian_cellphone,
     special_care_needs: data.special_care_needs,
+    vaccines: data.vaccines,
+    medical_conditions: data.medical_conditions,
   };
 }
 
@@ -178,7 +188,8 @@ export async function updatePet(petId: string, petData: Partial<CreatePetData>):
   if (petData.veterinarian_cellphone !== undefined) updateData.veterinarian_cellphone = petData.veterinarian_cellphone;
   if (petData.special_care_needs !== undefined) updateData.special_care_needs = petData.special_care_needs;
   if (petData.profile_picture_url !== undefined) updateData.profile_picture_url = petData.profile_picture_url;
-
+  if (petData.vaccines !== undefined) updateData.vaccines = petData.vaccines;
+  if (petData.medical_conditions !== undefined) updateData.medical_conditions = petData.medical_conditions;
   const { data, error } = await supabase
     .from("pl_pets")
     .update(updateData)

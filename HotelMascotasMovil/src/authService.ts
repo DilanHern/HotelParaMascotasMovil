@@ -22,8 +22,8 @@ export async function registerUser(formData: RegisterData) {
   const firstname = nombreParts[0];
   const lastname = nombreParts.slice(1).join(" ") || nombreParts[0];
 
-  // Convertir género a boolean
-  const genderBool = genero === "Masculino";
+  // Convertir género a entero
+  const genderInt = genero === "Masculino" ? 0 : genero === "Femenino" ? 1 : 2;
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -34,7 +34,7 @@ export async function registerUser(formData: RegisterData) {
         lastname,
         cedula,
         cellphone: telefono,
-        gender: genderBool,
+        gender: genderInt,
         line1,
         line2,
         district_id: distritoId,
