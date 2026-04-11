@@ -1,26 +1,25 @@
-import React, { useState, useEffect } from "react";
+import { DropdownSelect } from "@/components/DropdownSelect";
+import { MobileHeader } from "@/components/MobileHeader";
+import { supabase } from "@/lib/supabase";
+import { uploadPetProfilePicture } from "@/src/petPFP";
+import { getPetById, getPetTypes, updatePet } from "@/src/petsService";
+import * as ImagePicker from "expo-image-picker";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Upload } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
-	StyleSheet,
-	Text,
-	View,
-	TextInput,
-	TouchableOpacity,
-	ScrollView,
+	ActivityIndicator,
 	Alert,
 	Image,
-	Modal,
-	ActivityIndicator,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View
 } from "react-native";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { MobileHeader } from "@/components/MobileHeader";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Upload } from "lucide-react-native";
-import { DropdownSelect } from "@/components/DropdownSelect";
-import * as ImagePicker from "expo-image-picker";
-import { uploadPetProfilePicture } from "@/src/petPFP";
-import { supabase } from "@/lib/supabase";
-import { getPetTypes, getPetById, updatePet } from "@/src/petsService";
 
 interface DropdownOption {
 	id: number;
@@ -102,12 +101,7 @@ export default function EditPet() {
 		}
 	};
 
-	const handleDateChange = (event: any, selectedDate?: Date) => {
-		if (selectedDate) {
-			setFechaNacimiento(selectedDate);
-		}
-		setShowDatePicker(false);
-	};
+
 
 	const pickImage = async () => {
 		try {
@@ -247,31 +241,18 @@ export default function EditPet() {
 									{fechaNacimiento.toLocaleDateString()}
 								</Text>
 							</TouchableOpacity>
-							<Modal
-								transparent={true}
-								animationType="fade"
-								visible={showDatePicker}
-								onRequestClose={() => setShowDatePicker(false)}
-							>
-								<View style={styles.datePickerModalOverlay}>
-									<View style={styles.datePickerModalContent}>
-										<DateTimePicker
-											value={fechaNacimiento}
-											mode="date"
-											display="spinner"
-											onChange={handleDateChange}
-											textColor="#333"
-											maximumDate={new Date()}
-										/>
-										<TouchableOpacity
-											style={styles.datePickerConfirmButton}
-											onPress={() => setShowDatePicker(false)}
-										>
-											<Text style={styles.datePickerConfirmButtonText}>Confirmar</Text>
-										</TouchableOpacity>
-									</View>
-								</View>
-							</Modal>
+								<DateTimePickerModal
+									isVisible={showDatePicker}
+									mode="date"
+									date={fechaNacimiento}
+									onConfirm={(date: Date) => {
+										setFechaNacimiento(date);
+										setShowDatePicker(false);
+									}}
+									onCancel={() => setShowDatePicker(false)}
+									maximumDate={new Date()}
+									locale="es-ES"
+								/>
 						</View>
 
 						{/* Tipo de animal */}
@@ -280,7 +261,7 @@ export default function EditPet() {
 								label="Tipo de animal *"
 								options={animalOptions}
 								selectedId={tipoAnimalId}
-								onSelect={(option) => setTipoAnimalId(option.id)}
+								onSelect={(option) => setTipoAnimalId(Number(option.id))}
 								placeholder="Selecciona"
 							/>
 						</View>
@@ -291,7 +272,7 @@ export default function EditPet() {
 								label="Género *"
 								options={generoOptions}
 								selectedId={generoId}
-								onSelect={(option) => setGeneroId(option.id)}
+								onSelect={(option) => setGeneroId(Number(option.id))}
 								placeholder="Selecciona"
 							/>
 						</View>

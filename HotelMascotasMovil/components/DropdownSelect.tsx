@@ -1,24 +1,23 @@
+import { ChevronDown } from "lucide-react-native";
 import React, { useState } from "react";
 import {
+  Modal,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
   TouchableOpacity,
-  Modal,
-  FlatList,
-  ScrollView,
+  View
 } from "react-native";
-import { ChevronDown } from "lucide-react-native";
 
 interface DropdownOption {
-  id: number;
+  id: string | number;
   name: string;
 }
 
 interface DropdownSelectProps {
   label: string;
   options: DropdownOption[];
-  selectedId: number | null;
+  selectedId: string | number | null;
   onSelect: (option: DropdownOption) => void;
   placeholder?: string;
 }
@@ -95,7 +94,7 @@ export const DropdownSelect: React.FC<DropdownSelectProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    marginBottom: 20,
+    marginBottom: 5,
   },
   label: {
     fontSize: 16,
@@ -107,7 +106,7 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "#fff",
     paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingVertical: 9,
     borderRadius: 8,
     flexDirection: "row",
     justifyContent: "space-between",

@@ -1,5 +1,6 @@
+import { DropdownSelect } from "@/components/DropdownSelect";
 import { createReservation, getAvailableRooms, getSpecialServices, getUserPets } from "@/src/reservationsService";
-import { Calendar, Check, ChevronDown, ChevronUp, X } from "lucide-react-native";
+import { Calendar, Check, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -173,28 +174,16 @@ export default function NewReservationModal({ visible, onClose }: Props) {
           <Text style={styles.modalSubtitle}>Completa los detalles de la reserva</Text>
 
           <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false} contentContainerStyle={styles.form}>
-            <Text style={styles.fieldLabel}>Mascota *</Text>
-            <TouchableOpacity style={[styles.dropdown, styles.fieldRow]} onPress={() => setShowPetList((s) => !s)}>
-              <Text>{petName ?? "Selecciona una mascota"}</Text>
-              {showPetList ? <ChevronUp color="#6b4226" size={18} /> : <ChevronDown color="#6b4226" size={18} />}
-            </TouchableOpacity>
-            {showPetList && (
-              <View style={styles.optionsList}>
-                {pets.map((p) => (
-                  <TouchableOpacity
-                    key={p.id}
-                    style={styles.optionItem}
-                    onPress={() => {
-                      setPetId(p.id);
-                      setPetName(p.name);
-                      setShowPetList(false);
-                    }}
-                  >
-                    <Text>{p.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <DropdownSelect
+              label="Mascota *"
+              options={pets.map((p) => ({ id: p.id, name: p.name }))}
+              selectedId={petId}
+              onSelect={(option) => {
+                setPetId(String(option.id));
+                setPetName(option.name);
+              }}
+              placeholder={pets.length === 0 ? "Cargando mascotas..." : "Selecciona"}
+            />
 
             <Text style={styles.fieldLabel}>Tipo de hospedaje *</Text>
             <View style={styles.rowButtons}>
@@ -301,31 +290,16 @@ export default function NewReservationModal({ visible, onClose }: Props) {
               <Text style={styles.verifyButtonText}>Verificar disponibilidad</Text>
             </TouchableOpacity>
 
-            <Text style={styles.fieldLabel}>Habitación *</Text>
-            <TouchableOpacity
-              style={[styles.dropdown, roomsAvailable.length === 0 ? styles.fieldDisabled : null, styles.fieldRow]}
-              onPress={() => roomsAvailable.length > 0 && setShowRoomList((s) => !s)}
-            >
-              <Text>{selectedRoomName ?? (roomsAvailable.length === 0 ? "Verifica primero la disponibilidad" : "Selecciona habitación")}</Text>
-              {showRoomList ? <ChevronUp color="#6b4226" size={18} /> : <ChevronDown color="#6b4226" size={18} />}
-            </TouchableOpacity>
-            {roomsAvailable.length > 0 && showRoomList && (
-              <View style={styles.optionsList}>
-                {roomsAvailable.map((r) => (
-                  <TouchableOpacity
-                    key={r.id}
-                    style={styles.optionItem}
-                    onPress={() => {
-                      setSelectedRoomId(r.id);
-                      setSelectedRoomName(r.name);
-                      setShowRoomList(false);
-                    }}
-                  >
-                    <Text>{r.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <DropdownSelect
+              label="Habitación *"
+              options={roomsAvailable.map((r) => ({ id: r.id, name: r.name }))}
+              selectedId={selectedRoomId}
+              onSelect={(option) => {
+                setSelectedRoomId(String(option.id));
+                setSelectedRoomName(option.name);
+              }}
+              placeholder={roomsAvailable.length === 0 ? "Verifica primero la disponibilidad" : "Selecciona habitación"}
+            />
 
             {lodgingType === "Especial" && (
               <>
@@ -481,6 +455,7 @@ const styles = StyleSheet.create({
   },
   verifyButton: {
     marginTop: 12,
+    marginBottom: 12,
     backgroundColor: "#6D4C41",
     paddingVertical: 10,
     borderRadius: 8,
