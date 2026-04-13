@@ -14,6 +14,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { MobileHeader } from "@/components/MobileHeader";
 import { Plus, Edit, Trash2 } from "lucide-react-native";
 import { getUserPetsWithTypes, deletePet } from "@/src/petsService";
+import { hasActivePetReservations } from "@/src/reservationsService";
 
 interface Pet {
 	id: string;
@@ -79,6 +80,17 @@ export default function PetsScreen() {
 					text: "Eliminar",
 					onPress: async () => {
 						try {
+							// Verificar si tiene reservas activas
+							const hasReservations = await hasActivePetReservations(petId);
+
+							if (hasReservations) {
+								Alert.alert(
+									"No se puede eliminar",
+									`${petName} tiene reservas activas. Completa o cancela las reservas antes de eliminar la mascota.`
+								);
+								return;
+							}
+
 							await deletePet(petId);
 							setPets(pets.filter((p) => p.id !== petId));
 							Alert.alert("Éxito", "Mascota eliminada correctamente");

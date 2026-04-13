@@ -48,7 +48,10 @@ async function getLodgingTypeId(lodgingType: "Estándar" | "Especial") {
 
   if (error) throw error;
   const rows = data || [];
-  const target = lodgingType.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const target = lodgingType
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
   const byName = rows.find((r: any) => {
     const val = String(r.type || "")
       .toLowerCase()
@@ -62,10 +65,17 @@ async function getLodgingTypeId(lodgingType: "Estándar" | "Especial") {
 }
 
 function normalizeText(input: string) {
-  return input.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 }
 
-async function linkReservationServices(reservationId: string, selectedServices: string[]) {
+async function linkReservationServices(
+  reservationId: string,
+  selectedServices: string[],
+) {
   if (!selectedServices.length) return;
 
   const { data: allServices, error: servicesError } = await supabase
@@ -101,10 +111,16 @@ async function getPendingStatusId() {
 
   if (error) throw error;
   const rows = data || [];
-  const byName = rows.find((r: any) => String(r.name || "").toLowerCase().includes("pend"));
+  const byName = rows.find((r: any) =>
+    String(r.name || "")
+      .toLowerCase()
+      .includes("pend"),
+  );
   if (byName?.id) return byName.id;
   if (rows[0]?.id) return rows[0].id;
-  throw new Error("No hay estados de reserva configurados en pl_reservationstatus");
+  throw new Error(
+    "No hay estados de reserva configurados en pl_reservationstatus",
+  );
 }
 
 export interface Reservation {
@@ -158,20 +174,24 @@ export async function getSpecialServices(): Promise<string[]> {
 
 // Get all reservations for the current user
 export async function getUserReservations(): Promise<Reservation[]> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) throw new Error("No user logged in");
 
   try {
     const { data, error } = await supabase
       .from("pl_reservations")
-      .select(`
+      .select(
+        `
         *,
         pet:pl_pets(name),
         room:pl_rooms(name),
         lodging_type:pl_lodgingtypes(type),
         status:pl_reservationstatus(name)
-      `)
+      `,
+      )
       .order("check_in", { ascending: false });
 
     if (error) throw error;
@@ -193,13 +213,19 @@ export async function getUserReservations(): Promise<Reservation[]> {
               .map((s: any) => s.service?.name)
               .filter(Boolean);
           } catch (err) {
-            console.error("Error fetching services for reservation:", res.id, err);
+            console.error(
+              "Error fetching services for reservation:",
+              res.id,
+              err,
+            );
           }
         }
 
         // Mapear status_id (1-5) directamente
         const statusId = res.status_id || 1;
-        const lodgingTypeName = res.lodging_type?.type || (res.lodging_type_id === 2 ? "Especial" : "Estándar");
+        const lodgingTypeName =
+          res.lodging_type?.type ||
+          (res.lodging_type_id === 2 ? "Especial" : "Estándar");
 
         return {
           id: res.id,
@@ -215,7 +241,7 @@ export async function getUserReservations(): Promise<Reservation[]> {
           created_at: res.created_at,
           updated_at: res.updated_at,
         };
-      })
+      }),
     );
 
     return reservationsWithServices;
@@ -227,9 +253,11 @@ export async function getUserReservations(): Promise<Reservation[]> {
 
 // Create a new reservation
 export async function createReservation(
-  reservationData: CreateReservationData
+  reservationData: CreateReservationData,
 ): Promise<Reservation> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) throw new Error("No user logged in");
 
@@ -244,7 +272,9 @@ export async function createReservation(
   }
 
   if (checkOutDate <= checkInDate) {
-    throw new Error("La fecha de salida debe ser después de la fecha de ingreso");
+    throw new Error(
+      "La fecha de salida debe ser después de la fecha de ingreso",
+    );
   }
 
   const [lodgingTypeId, pendingStatusId] = await Promise.all([
@@ -269,7 +299,10 @@ export async function createReservation(
 
   if (error) throw error;
 
-  if (reservationData.lodging_type === "Especial" && reservationData.special_services?.length) {
+  if (
+    reservationData.lodging_type === "Especial" &&
+    reservationData.special_services?.length
+  ) {
     await linkReservationServices(data.id, reservationData.special_services);
   }
 
@@ -278,7 +311,7 @@ export async function createReservation(
   // ========================
   try {
     const notificationEvent: INotificationEvent = {
-      type: 'RESERVATION_CONFIRMED',
+      type: "RESERVATION_CONFIRMED",
       user_id: user.id,
       data: {
         email: user.email,
@@ -292,9 +325,15 @@ export async function createReservation(
     };
 
     await eventEmitter.emit(notificationEvent);
-    console.log('[reservationsService] Evento RESERVATION_CONFIRMED emitido para reserva:', data.id);
+    console.log(
+      "[reservationsService] Evento RESERVATION_CONFIRMED emitido para reserva:",
+      data.id,
+    );
   } catch (notificationError) {
-    console.error('[reservationsService] Error emitiendo notificación RESERVATION_CONFIRMED:', notificationError);
+    console.error(
+      "[reservationsService] Error emitiendo notificación RESERVATION_CONFIRMED:",
+      notificationError,
+    );
     // No fallar la creación de reserva por error en notificación
   }
 
@@ -313,9 +352,11 @@ export async function createReservation(
 // Update a reservation
 export async function updateReservation(
   reservationId: string,
-  updateData: UpdateReservationData
+  updateData: UpdateReservationData,
 ): Promise<Reservation> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) throw new Error("No user logged in");
 
@@ -345,7 +386,9 @@ export async function updateReservation(
     dateChanged = true;
   }
   if (updateData.lodging_type !== undefined) {
-    updateBody.lodging_type_id = await getLodgingTypeId(updateData.lodging_type);
+    updateBody.lodging_type_id = await getLodgingTypeId(
+      updateData.lodging_type,
+    );
   }
   if (updateData.status !== undefined) {
     // Status ya viene como 1-5 de la BD
@@ -371,7 +414,7 @@ export async function updateReservation(
     // Emit RESERVATION_MODIFIED if dates changed
     if (dateChanged) {
       const notificationEvent: INotificationEvent = {
-        type: 'RESERVATION_MODIFIED',
+        type: "RESERVATION_MODIFIED",
         user_id: user.id,
         data: {
           email: user.email,
@@ -385,13 +428,16 @@ export async function updateReservation(
       };
 
       await eventEmitter.emit(notificationEvent);
-      console.log('[reservationsService] Evento RESERVATION_MODIFIED emitido para reserva:', reservationId);
+      console.log(
+        "[reservationsService] Evento RESERVATION_MODIFIED emitido para reserva:",
+        reservationId,
+      );
     }
 
     // Emit LODGING_STARTED if status changed to 3 (En curso)
     if (statusChanged && newStatus === 3) {
       const notificationEvent: INotificationEvent = {
-        type: 'LODGING_STARTED',
+        type: "LODGING_STARTED",
         user_id: user.id,
         data: {
           email: user.email,
@@ -404,13 +450,16 @@ export async function updateReservation(
       };
 
       await eventEmitter.emit(notificationEvent);
-      console.log('[reservationsService] Evento LODGING_STARTED emitido para reserva:', reservationId);
+      console.log(
+        "[reservationsService] Evento LODGING_STARTED emitido para reserva:",
+        reservationId,
+      );
     }
 
     // Emit LODGING_ENDED if status changed to 4 (Completada)
     if (statusChanged && newStatus === 4) {
       const notificationEvent: INotificationEvent = {
-        type: 'LODGING_ENDED',
+        type: "LODGING_ENDED",
         user_id: user.id,
         data: {
           email: user.email,
@@ -423,10 +472,16 @@ export async function updateReservation(
       };
 
       await eventEmitter.emit(notificationEvent);
-      console.log('[reservationsService] Evento LODGING_ENDED emitido para reserva:', reservationId);
+      console.log(
+        "[reservationsService] Evento LODGING_ENDED emitido para reserva:",
+        reservationId,
+      );
     }
   } catch (notificationError) {
-    console.error('[reservationsService] Error emitiendo notificación:', notificationError);
+    console.error(
+      "[reservationsService] Error emitiendo notificación:",
+      notificationError,
+    );
     // No fallar la actualización de reserva por error en notificación
   }
 
@@ -444,7 +499,9 @@ export async function updateReservation(
 
 // Delete a reservation
 export async function deleteReservation(reservationId: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) throw new Error("No user logged in");
 
@@ -469,7 +526,7 @@ export async function deleteReservation(reservationId: string): Promise<void> {
   // ========================
   try {
     const notificationEvent: INotificationEvent = {
-      type: 'RESERVATION_DELETED',
+      type: "RESERVATION_DELETED",
       user_id: user.id,
       data: {
         email: user.email,
@@ -481,9 +538,15 @@ export async function deleteReservation(reservationId: string): Promise<void> {
     };
 
     await eventEmitter.emit(notificationEvent);
-    console.log('[reservationsService] Evento RESERVATION_DELETED emitido para reserva:', reservationId);
+    console.log(
+      "[reservationsService] Evento RESERVATION_DELETED emitido para reserva:",
+      reservationId,
+    );
   } catch (notificationError) {
-    console.error('[reservationsService] Error emitiendo notificación RESERVATION_DELETED:', notificationError);
+    console.error(
+      "[reservationsService] Error emitiendo notificación RESERVATION_DELETED:",
+      notificationError,
+    );
     // No fallar la eliminación de reserva por error en notificación
   }
 }
@@ -492,7 +555,7 @@ export async function deleteReservation(reservationId: string): Promise<void> {
 export async function getAvailableRooms(
   checkInDate: string,
   checkOutDate: string,
-  lodgingType: "Estándar" | "Especial"
+  lodgingType: "Estándar" | "Especial",
 ): Promise<any[]> {
   try {
     const { data, error } = await supabase.rpc("get_available_rooms", {
@@ -511,7 +574,9 @@ export async function getAvailableRooms(
 
 // Get user's pets for the reservation form
 export async function getUserPets(): Promise<any[]> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) throw new Error("No user logged in");
 
@@ -528,5 +593,25 @@ export async function getUserPets(): Promise<any[]> {
   } catch (error) {
     console.error("Error fetching pets:", error);
     return [];
+  }
+}
+
+// Check if a pet has active reservations
+export async function hasActivePetReservations(
+  petId: string,
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from("pl_reservations")
+      .select("id, status_id")
+      .eq("pet_id", petId)
+      .in("status_id", [1, 2, 3]); // 1=Pendiente, 2=Confirmada, 3=En curso
+
+    if (error) throw error;
+
+    return (data || []).length > 0;
+  } catch (error) {
+    console.error("Error checking active reservations:", error);
+    return false;
   }
 }
