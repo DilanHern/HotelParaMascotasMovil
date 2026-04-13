@@ -24,6 +24,7 @@ export default function Login() {
       return;
     }
 
+
     setLoading(true);
 
     try {
@@ -34,6 +35,10 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+    const handleForgotPassword = () => {
+    router.push("/auth/ForgotPassword" as any);
   };
 
   return (
@@ -70,6 +75,13 @@ export default function Login() {
             placeholderTextColor="#999"
           />
         </View>
+
+        <TouchableOpacity
+          onPress={handleForgotPassword}
+          style={styles.forgotContainer}
+        >
+          <Text style={styles.forgotLink}>¿Olvidaste tu contraseña?</Text>
+        </TouchableOpacity>
 
         <View style={styles.registerContainer}>
           <Text style={styles.registerText}>¿No tienes cuenta?</Text>
@@ -173,4 +185,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
+
+  forgotContainer: {
+  alignSelf: "flex-end",
+  marginBottom: 20,
+  marginTop: -10,
+},
+forgotLink: {
+  fontSize: 14,
+  color: "#6D4C41",
+  fontWeight: "600",
+},
 });

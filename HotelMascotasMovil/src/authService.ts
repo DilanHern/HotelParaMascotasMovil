@@ -89,3 +89,33 @@ export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser();
   return user;
 }
+
+// Enviar OTP al email
+export async function sendPasswordResetOtp(email: string) {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: undefined, // ← esto fuerza OTP en lugar de magic link
+    },
+  });
+  if (error) throw error;
+}
+
+// Verificar OTP e iniciar sesión
+export async function verifyOtp(email: string, token: string) {
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: "email",
+  });
+  if (error) throw error;
+}
+
+// Cambiar contraseña (ya autenticado con OTP)
+export async function changePassword(newPassword: string) {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+  if (error) throw error;
+}
