@@ -1,5 +1,5 @@
 import { MobileHeader } from "@/components/MobileHeader";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Bell, Calendar, Grid3x3, User, Heart } from "lucide-react-native";
 import React, { useState, useEffect } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
@@ -22,9 +22,11 @@ export default function HomeScreen() {
 	const [pets, setPets] = useState<Pet[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
-		loadHomeData();
-	}, []);
+	useFocusEffect(
+		React.useCallback(() => {
+			loadHomeData();
+		}, [])
+	);
 
 	const loadHomeData = async () => {
 		try {

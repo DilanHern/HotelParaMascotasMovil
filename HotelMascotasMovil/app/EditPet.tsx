@@ -195,7 +195,7 @@ export default function EditPet() {
 			});
 
 			Alert.alert("Éxito", `Mascota ${nombre} actualizada correctamente`);
-			router.replace("/pets" as any);
+			router.back();
 		} catch (error: any) {
 			console.error("Error updating pet:", error);
 			Alert.alert("Error", error.message || "No se pudo actualizar la mascota");

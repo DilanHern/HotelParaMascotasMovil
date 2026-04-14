@@ -193,7 +193,7 @@ export default function PetRegister() {
       }
 
       Alert.alert("Éxito", "Mascota registrada correctamente");
-      router.replace("/pets" as any);
+      router.back();
     } catch (error: any) {
       console.error("Error creating pet:", error);
       Alert.alert("Error", error.message || "No se pudo registrar la mascota");
